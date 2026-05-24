@@ -1,0 +1,59 @@
+export const DEFAULT_SETTINGS = Object.freeze({
+    loyalty_target_visits: 5,
+    idle_lock_time: 60,
+    pin_security_enabled: true
+});
+
+export const VEHICLE_TYPES = Object.freeze([
+    { id: 'SEDAN', label: 'Sedan' },
+    { id: 'SUV', label: 'SUV' },
+    { id: 'MINIBUS', label: 'Minibüs' },
+    { id: 'TICARI', label: 'Ticari' },
+    { id: 'MOTOSIKLET', label: 'Motosiklet' }
+]);
+
+export const APPOINTMENT_STATUS = Object.freeze({
+    PENDING: 'BEKLEYOR',
+    COMPLETED: 'TAMAMLANDI',
+    CANCELLED: 'IPTAL'
+});
+
+export const TRANSACTION_STATUS = Object.freeze({
+    COMPLETED: 'COMPLETED'
+});
+
+export const createEmptyPinGate = () => ({
+    isOpen: false,
+    onSuccess: null,
+    onFail: null,
+    customText: ''
+});
+
+export const normalizePlate = (value = '') => {
+    return value.toString().toUpperCase().replace(/\s+/g, '').trim();
+};
+
+export const validateTurkishPlate = (plate) => {
+    const clean = normalizePlate(plate);
+    if (!clean) return false;
+    return /^[0-9]{2}[A-Z]{1,3}[0-9]{2,4}$/.test(clean);
+};
+
+export const formatCurrency = (value = 0) => {
+    const numericValue = Number.isFinite(Number(value)) ? Number(value) : 0;
+    return `${numericValue.toLocaleString('tr-TR')} ₺`;
+};
+
+export const parsePositiveNumber = (value, fallback = 0) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+};
+
+export const parsePositiveInteger = (value, fallback = 0) => {
+    const parsed = parseInt(value, 10);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+};
+
+export const hasOwn = (object, key) => {
+    return Object.prototype.hasOwnProperty.call(object, key);
+};

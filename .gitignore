@@ -1,0 +1,17 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+
+# IDE / editor
+.vscode/
+.idea/
+
+# Tooling caches
+.codegraph/
+.kilo/node_modules/
+.kilo/package-lock.json
+
+# Not: assets/css/tailwind.css ve assets/js/app.js DERLENMIS dosyalardir.
+# index.html dogrudan acilabilsin diye repo'da bilerek tutuluyorlar.
+# `npm run build` ile yeniden uretilebilirler.

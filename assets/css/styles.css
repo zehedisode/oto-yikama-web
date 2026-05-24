@@ -1,0 +1,89 @@
+body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #0b1115;
+            color: #f3f4f6;
+            overflow-x: hidden;
+        }
+        #root {
+            min-height: 100vh;
+        }
+        button,
+        input,
+        select,
+        textarea {
+            letter-spacing: 0;
+        }
+        button {
+            touch-action: manipulation;
+        }
+        input,
+        select,
+        textarea {
+            color-scheme: dark;
+        }
+        .tracking-tight,
+        .tracking-wider,
+        .tracking-widest {
+            letter-spacing: 0 !important;
+        }
+        .rounded-xl,
+        .rounded-2xl {
+            border-radius: 8px !important;
+        }
+        .app-page-header {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        .app-page-actions > button {
+            white-space: nowrap;
+        }
+        .overflow-x-auto table {
+            min-width: 720px;
+        }
+        .focus\:outline-none:focus,
+        button:focus-visible,
+        input:focus-visible,
+        select:focus-visible,
+        textarea:focus-visible {
+            outline: 2px solid #22d3ee;
+            outline-offset: 2px;
+        }
+        /* Custom scrollbar styling for modern appearance */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+        /* Lock screen fade animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.97); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.25s ease-out forwards;
+        }
+        @media (max-width: 767px) {
+            .app-page-header {
+                align-items: stretch;
+                flex-direction: column;
+            }
+            .app-page-actions {
+                width: 100%;
+            }
+            .app-page-actions > button {
+                flex: 1 1 100%;
+                justify-content: center;
+                white-space: normal;
+            }
+        }

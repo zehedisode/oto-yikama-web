@@ -1,0 +1,14 @@
+{
+  "name": "oto-yikama-pro",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Sunucusuz, localStorage tabanli oto yikama yonetim paneli.",
+  "scripts": {
+    "build": "tailwindcss -c ./tailwind.config.cjs -i ./src/styles/tailwind.css -o ./assets/css/tailwind.css --minify && esbuild ./src/app.jsx --bundle --outfile=./assets/js/app.js --format=iife --target=es2018 --loader:.jsx=jsx --charset=utf8",
+    "check": "node --check ./assets/js/app.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "tailwindcss": "^3.4.17"
+  }
+}
