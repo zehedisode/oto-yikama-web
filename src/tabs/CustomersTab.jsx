@@ -1,6 +1,6 @@
 const { useState, useMemo } = React;
 
-import { VEHICLE_TYPES, normalizePlate, formatCurrency } from '../core/app-core.js';
+import { VEHICLE_TYPES, normalizePlate, formatCurrency, computeLoyaltyStats } from '../core/app-core.js';
 import { generateUUID } from '../core/db.js';
 import { PageHeader } from '../ui/PageHeader.jsx';
 import { CustomConfirmModal } from '../ui/ConfirmModal.jsx';
@@ -17,11 +17,14 @@ export const CustomersTab = ({
     setSales,
     products,
     setProducts,
-    services, 
+    services,
+    settings,
     showNotification 
 }) => {
+    const loyaltyTarget = settings?.loyalty_target_visits || 5;
     const [search, setSearch] = useState('');
     const [filterType, setFilterType] = useState('ALL');
+    const [showOnlyReady, setShowOnlyReady] = useState(false);
     
     const [viewHistoryCust, setViewHistoryCust] = useState(null);
     const [editCustomer, setEditCustomer] = useState(null);
@@ -32,15 +35,33 @@ export const CustomersTab = ({
 
     const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, targetId: null });
 
+    const customerLoyalty = useMemo(() => {
+        const map = new Map();
+        customers.forEach(c => {
+            map.set(c.id, computeLoyaltyStats(c.id, transactions, loyaltyTarget));
+        });
+        return map;
+    }, [customers, transactions, loyaltyTarget]);
+
+    const readyCount = useMemo(() => {
+        let count = 0;
+        customerLoyalty.forEach(stats => {
+            if (stats.ready) count += 1;
+        });
+        return count;
+    }, [customerLoyalty]);
+
     const filteredCustomers = useMemo(() => {
         return customers.filter(c => {
             const nameMatch = c.name.toLowerCase().includes(search.toLowerCase());
             const plateMatch = c.plate.toLowerCase().includes(search.toLowerCase());
             const phoneMatch = c.phone.includes(search);
             const typeMatch = filterType === 'ALL' || c.vehicleType === filterType;
-            return (nameMatch || plateMatch || phoneMatch) && typeMatch;
+            const stats = customerLoyalty.get(c.id);
+            const readyMatch = !showOnlyReady || (stats && stats.ready);
+            return (nameMatch || plateMatch || phoneMatch) && typeMatch && readyMatch;
         });
-    }, [customers, search, filterType]);
+    }, [customers, search, filterType, showOnlyReady, customerLoyalty]);
 
     const getCustomerWashHistory = (custId) => {
         return transactions
@@ -128,6 +149,20 @@ export const CustomersTab = ({
             <PageHeader
                 title="Müşteri Portföyü"
                 description="Müşterilerinizi, araç sınıflarını ve sadakat geçmişlerini görüntüleyin."
+                actions={
+                    <button
+                        type="button"
+                        onClick={() => setShowOnlyReady(prev => !prev)}
+                        className={`px-4 py-2 rounded-lg text-sm font-semibold flex items-center space-x-2 transition border ${
+                            showOnlyReady
+                                ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow shadow-emerald-500/20'
+                                : 'bg-darkBg-card hover:bg-darkBg-hover text-emerald-300 border-emerald-700/40'
+                        }`}
+                    >
+                        <Icons.Gift />
+                        <span>{showOnlyReady ? 'Tüm Müşteriler' : `Ödüle Hazır (${readyCount})`}</span>
+                    </button>
+                }
             />
 
             <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
@@ -161,16 +196,50 @@ export const CustomersTab = ({
                 ) : (
                     filteredCustomers.map(cust => {
                         const history = getCustomerWashHistory(cust.id);
+                        const stats = customerLoyalty.get(cust.id) || computeLoyaltyStats(cust.id, transactions, loyaltyTarget);
+                        const progressPercent = stats.ready ? 100 : (stats.progress / stats.target) * 100;
                         return (
-                            <div key={cust.id} className="bg-darkBg-card border border-darkBg-border p-5 rounded-xl shadow space-y-4 flex flex-col justify-between">
+                            <div
+                                key={cust.id}
+                                className={`bg-darkBg-card border p-5 rounded-xl shadow space-y-4 flex flex-col justify-between transition ${
+                                    stats.ready ? 'border-emerald-500/50 shadow-emerald-500/10' : 'border-darkBg-border'
+                                }`}
+                            >
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-start">
                                         <span className="text-sm font-extrabold bg-brand-500/10 text-brand-400 px-3 py-1 rounded-md tracking-wider uppercase">{cust.plate}</span>
-                                        <span className="text-[10px] bg-darkBg-deep border border-darkBg-border text-gray-400 px-2 py-0.5 rounded-full font-semibold">{cust.vehicleType}</span>
+                                        <div className="flex flex-col items-end gap-1">
+                                            <span className="text-[10px] bg-darkBg-deep border border-darkBg-border text-gray-400 px-2 py-0.5 rounded-full font-semibold">{cust.vehicleType}</span>
+                                            {stats.ready && (
+                                                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-extrabold flex items-center gap-1 animate-pulse">
+                                                    <Icons.Gift /> {stats.availableRewards} Bedava
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="text-left">
                                         <h4 className="text-sm font-bold text-white">{cust.name}</h4>
                                         <p className="text-xs text-gray-400">{cust.phone}</p>
+                                    </div>
+
+                                    <div className="bg-darkBg-deep border border-darkBg-border rounded-lg p-2.5 space-y-1.5">
+                                        <div className="flex justify-between items-center text-[10px] font-semibold">
+                                            <span className="text-gray-400">Sadakat</span>
+                                            <span className={stats.ready ? 'text-emerald-300 font-extrabold' : 'text-gray-300'}>
+                                                {stats.ready ? 'Bedava yıkama hazır' : `${stats.progress} / ${stats.target}`}
+                                            </span>
+                                        </div>
+                                        <div className="w-full bg-darkBg-card rounded-full h-1.5 overflow-hidden">
+                                            <div
+                                                className={`h-1.5 rounded-full transition-all duration-300 ${stats.ready ? 'bg-emerald-500' : 'bg-brand-500'}`}
+                                                style={{ width: `${progressPercent}%` }}
+                                            />
+                                        </div>
+                                        {!stats.ready && (
+                                            <p className="text-[10px] text-gray-500">
+                                                Hediyeye <span className="text-brand-400 font-extrabold">{stats.nextRewardIn}</span> ücretli yıkama kaldı.
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
 

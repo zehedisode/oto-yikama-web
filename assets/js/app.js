@@ -49,6 +49,39 @@
   var hasOwn = (object, key) => {
     return Object.prototype.hasOwnProperty.call(object, key);
   };
+  var computeLoyaltyStats = (customerId, transactions, target = 5) => {
+    const safeTarget = Math.max(1, parsePositiveInteger(target, 5));
+    const empty = {
+      target: safeTarget,
+      paidVisits: 0,
+      rewardVisits: 0,
+      progress: 0,
+      availableRewards: 0,
+      nextRewardIn: safeTarget,
+      ready: false,
+      completed: 0
+    };
+    if (!customerId || !Array.isArray(transactions)) return empty;
+    const completed = transactions.filter(
+      (t) => t && t.customerId === customerId && t.status === "COMPLETED"
+    );
+    const paidVisits = completed.filter((t) => !t.isLoyaltyReward).length;
+    const rewardVisits = completed.filter((t) => t.isLoyaltyReward).length;
+    const earnedRewards = Math.floor(paidVisits / safeTarget);
+    const availableRewards = Math.max(0, earnedRewards - rewardVisits);
+    const progress = paidVisits % safeTarget;
+    const nextRewardIn = safeTarget - progress;
+    return {
+      target: safeTarget,
+      paidVisits,
+      rewardVisits,
+      progress,
+      availableRewards,
+      nextRewardIn: availableRewards > 0 ? 0 : nextRewardIn,
+      ready: availableRewards > 0,
+      completed: completed.length
+    };
+  };
 
   // src/core/seed.js
   var DEFAULT_ADMIN_USER = () => [
@@ -593,8 +626,10 @@
     setQuickPlateContext,
     isSensitiveHidden,
     setIsSensitiveHidden,
-    requestPinApproval
+    requestPinApproval,
+    settings
   }) => {
+    const loyaltyTarget = (settings == null ? void 0 : settings.loyalty_target_visits) || 5;
     const [quickPlate, setQuickPlate] = useState3("");
     const completedWashRevenues = useMemo(() => {
       return transactions.filter((t) => t.status === "COMPLETED").reduce((sum, t) => sum + t.totalPrice, 0);
@@ -625,6 +660,9 @@
       });
       return stats;
     }, [customers]);
+    const loyaltyReadyCustomers = useMemo(() => {
+      return customers.map((c) => ({ customer: c, stats: computeLoyaltyStats(c.id, transactions, loyaltyTarget) })).filter((item) => item.stats.ready).sort((a, b) => b.stats.availableRewards - a.stats.availableRewards);
+    }, [customers, transactions, loyaltyTarget]);
     const handleQuickSaleRedirect = (plateNum) => {
       setQuickPlateContext(plateNum);
       setActiveTab("sales");
@@ -674,7 +712,20 @@
       const count = vehicleStats[id] || 0;
       const percent = customers.length > 0 ? count / customers.length * 100 : 0;
       return /* @__PURE__ */ React.createElement("div", { key: id, className: "space-y-1" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between text-xs font-semibold" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-300" }, label), /* @__PURE__ */ React.createElement("span", { className: "text-gray-400" }, count, " Araç (", percent.toFixed(0), "%)")), /* @__PURE__ */ React.createElement("div", { className: "w-full bg-darkBg-deep rounded-full h-2" }, /* @__PURE__ */ React.createElement("div", { className: "bg-brand-500 h-2 rounded-full transition-all duration-300", style: { width: `${percent}%` } })));
-    })))), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 lg:grid-cols-2 gap-6 text-left" }, /* @__PURE__ */ React.createElement("div", { className: "bg-darkBg-card border border-darkBg-border rounded-xl p-5 shadow flex flex-col justify-between" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "text-base font-bold text-white mb-2" }, "Hızlı Plaka Sorgulama"), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-400 mb-4" }, "Müşteri kaydını ve sadakat puanını kontrol etmek için plaka yazın.")), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement(
+    })))), /* @__PURE__ */ React.createElement("div", { className: "bg-darkBg-card border border-emerald-500/30 rounded-xl p-5 shadow text-left" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between border-b border-darkBg-border pb-3 mb-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "text-base font-bold text-white flex items-center gap-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-emerald-400" }, /* @__PURE__ */ React.createElement(Icons.Gift, null)), "Bedava Yıkama Hak Eden Müşteriler"), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-400 mt-1" }, "Her ", loyaltyTarget, " ücretli yıkama sonrası 1 bedava yıkama. Listeyi arayıp müşteriyi bilgilendirebilirsiniz.")), /* @__PURE__ */ React.createElement("span", { className: "text-[11px] bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 px-3 py-1 rounded-full font-extrabold whitespace-nowrap" }, loyaltyReadyCustomers.length, " müşteri")), loyaltyReadyCustomers.length === 0 ? /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 py-6 text-center" }, "Şu an bedava yıkama hak eden müşteri bulunmuyor. Müşteriler ", loyaltyTarget, " ücretli yıkamayı tamamladığında burada listelenir.") : /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[280px] overflow-y-auto pr-1" }, loyaltyReadyCustomers.map(({ customer, stats }) => /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        type: "button",
+        key: customer.id,
+        onClick: () => handleQuickSaleRedirect(customer.plate),
+        className: "text-left bg-darkBg-deep border border-emerald-500/30 hover:border-emerald-400 hover:bg-emerald-950/20 rounded-lg p-3 transition focus:outline-none focus:ring-2 focus:ring-emerald-400/40",
+        title: "Hizmet girişine git"
+      },
+      /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs font-extrabold text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded uppercase tracking-wider" }, customer.plate), /* @__PURE__ */ React.createElement("span", { className: "text-[10px] bg-emerald-500/20 text-emerald-300 font-extrabold px-2 py-0.5 rounded-full" }, stats.availableRewards, "× bedava")),
+      /* @__PURE__ */ React.createElement("p", { className: "text-sm font-bold text-white mt-2 truncate" }, customer.name),
+      /* @__PURE__ */ React.createElement("p", { className: "text-[10px] text-gray-400 truncate" }, customer.phone),
+      /* @__PURE__ */ React.createElement("p", { className: "text-[10px] text-emerald-400 font-semibold mt-2" }, stats.paidVisits, " ücretli yıkama tamamlandı")
+    )))), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 lg:grid-cols-2 gap-6 text-left" }, /* @__PURE__ */ React.createElement("div", { className: "bg-darkBg-card border border-darkBg-border rounded-xl p-5 shadow flex flex-col justify-between" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "text-base font-bold text-white mb-2" }, "Hızlı Plaka Sorgulama"), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-400 mb-4" }, "Müşteri kaydını ve sadakat puanını kontrol etmek için plaka yazın.")), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "text",
@@ -753,21 +804,20 @@
       }
     }, [quickPlateContext]);
     const loyaltyStats = useMemo2(() => {
-      if (!matchedCustomer) return { visitsCount: 0, availableRewards: 0 };
-      const clientWashes = transactions.filter(
-        (t) => t.customerId === matchedCustomer.id && t.status === "COMPLETED"
-      );
-      const paidVisits = clientWashes.filter((t) => !t.isLoyaltyReward).length;
-      const target = settings.loyalty_target_visits || 5;
-      const earnedRewards = Math.floor(paidVisits / target);
-      const usedRewards = clientWashes.filter((t) => t.isLoyaltyReward).length;
-      const availableRewards = Math.max(0, earnedRewards - usedRewards);
+      if (!matchedCustomer) {
+        return { paidVisits: 0, availableRewards: 0, nextRewardIn: 0, target: settings.loyalty_target_visits || 5, progress: 0, ready: false };
+      }
+      const stats = computeLoyaltyStats(matchedCustomer.id, transactions, settings.loyalty_target_visits);
       return {
-        visitsCount: paidVisits,
-        availableRewards,
-        nextRewardIn: target - paidVisits % target
+        visitsCount: stats.paidVisits,
+        paidVisits: stats.paidVisits,
+        availableRewards: stats.availableRewards,
+        nextRewardIn: stats.nextRewardIn,
+        target: stats.target,
+        progress: stats.progress,
+        ready: stats.ready
       };
-    }, [matchedCustomer, transactions, settings]);
+    }, [matchedCustomer, transactions, settings.loyalty_target_visits]);
     const currentVehicleType = matchedCustomer ? matchedCustomer.vehicleType : vehicleType;
     const originalPrice = useMemo2(() => {
       return selectedServiceIds.reduce((sum, sId) => {
@@ -873,7 +923,13 @@
         placeholder: "Örn: 34ABC123",
         className: "w-full bg-darkBg-deep border border-darkBg-border p-3 rounded-lg text-center uppercase tracking-wider font-extrabold text-xl focus:outline-none focus:border-brand-500 text-white"
       }
-    )), matchedCustomer && /* @__PURE__ */ React.createElement("div", { className: "bg-brand-950/20 border border-brand-800/30 p-4 rounded-lg space-y-2 animate-fade-in" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between items-center" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs text-emerald-400 font-bold flex items-center gap-1" }, /* @__PURE__ */ React.createElement(Icons.Check, null), " Kayıtlı Müşteri"), /* @__PURE__ */ React.createElement("span", { className: "text-[10px] bg-brand-500/20 text-brand-300 font-bold px-2 py-0.5 rounded-full" }, matchedCustomer.vehicleType)), /* @__PURE__ */ React.createElement("p", { className: "text-sm font-bold text-white" }, matchedCustomer.name), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-400" }, matchedCustomer.phone), /* @__PURE__ */ React.createElement("div", { className: "border-t border-darkBg-border pt-2 mt-2 space-y-1" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between text-xs" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-400" }, "Ücretli Yıkama Sayısı:"), /* @__PURE__ */ React.createElement("span", { className: "text-white font-bold" }, loyaltyStats.visitsCount)), loyaltyStats.availableRewards > 0 ? /* @__PURE__ */ React.createElement("div", { className: "bg-emerald-500/10 border border-emerald-500/30 p-2 rounded flex items-center justify-between text-emerald-400 text-xs mt-1 animate-pulse" }, /* @__PURE__ */ React.createElement("span", { className: "font-semibold" }, "Hediye Yıkama Hazır"), /* @__PURE__ */ React.createElement("span", { className: "font-extrabold bg-emerald-500 text-white px-2 py-0.5 rounded text-[10px]" }, loyaltyStats.availableRewards, " Adet")) : /* @__PURE__ */ React.createElement("p", { className: "text-[10px] text-gray-500 font-medium" }, "Hediyeye kalan ziyaret: ", /* @__PURE__ */ React.createElement("span", { className: "text-brand-400 font-semibold" }, loyaltyStats.nextRewardIn)))), isNewCustomerMode && /* @__PURE__ */ React.createElement("div", { className: "bg-amber-950/10 border border-amber-900/30 p-4 rounded-lg space-y-3 animate-fade-in" }, /* @__PURE__ */ React.createElement("p", { className: "text-xs text-amber-400 font-bold flex items-center gap-2" }, /* @__PURE__ */ React.createElement(Icons.AlertTriangle, null), " Yeni Araç / Müşteri Profili"), /* @__PURE__ */ React.createElement("div", { className: "space-y-1" }, /* @__PURE__ */ React.createElement("label", { className: "text-[10px] text-gray-400 block" }, "Müşteri Ad Soyadı"), /* @__PURE__ */ React.createElement(
+    )), matchedCustomer && /* @__PURE__ */ React.createElement("div", { className: "bg-brand-950/20 border border-brand-800/30 p-4 rounded-lg space-y-2 animate-fade-in" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between items-center" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs text-emerald-400 font-bold flex items-center gap-1" }, /* @__PURE__ */ React.createElement(Icons.Check, null), " Kayıtlı Müşteri"), /* @__PURE__ */ React.createElement("span", { className: "text-[10px] bg-brand-500/20 text-brand-300 font-bold px-2 py-0.5 rounded-full" }, matchedCustomer.vehicleType)), /* @__PURE__ */ React.createElement("p", { className: "text-sm font-bold text-white" }, matchedCustomer.name), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-400" }, matchedCustomer.phone), /* @__PURE__ */ React.createElement("div", { className: "border-t border-darkBg-border pt-2 mt-2 space-y-2" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between items-center text-xs" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-400" }, "Sadakat Programı"), /* @__PURE__ */ React.createElement("span", { className: "text-white font-bold" }, loyaltyStats.paidVisits, " / ", loyaltyStats.target, " ücretli yıkama")), /* @__PURE__ */ React.createElement("div", { className: "w-full bg-darkBg-deep rounded-full h-1.5 overflow-hidden" }, /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        className: `h-1.5 rounded-full transition-all duration-300 ${loyaltyStats.ready ? "bg-emerald-500" : "bg-brand-500"}`,
+        style: { width: `${loyaltyStats.ready ? 100 : loyaltyStats.progress / loyaltyStats.target * 100}%` }
+      }
+    )), loyaltyStats.ready ? /* @__PURE__ */ React.createElement("div", { className: "bg-emerald-500/10 border border-emerald-500/30 p-2 rounded flex items-center justify-between text-emerald-400 text-xs animate-pulse" }, /* @__PURE__ */ React.createElement("span", { className: "font-semibold flex items-center gap-1" }, /* @__PURE__ */ React.createElement(Icons.Gift, null), " Hediye Yıkama Hazır"), /* @__PURE__ */ React.createElement("span", { className: "font-extrabold bg-emerald-500 text-white px-2 py-0.5 rounded text-[10px]" }, loyaltyStats.availableRewards, " adet")) : /* @__PURE__ */ React.createElement("p", { className: "text-[10px] text-gray-500 font-medium" }, "Hediyeye ", /* @__PURE__ */ React.createElement("span", { className: "text-brand-400 font-extrabold" }, loyaltyStats.nextRewardIn), " ücretli yıkama kaldı."))), isNewCustomerMode && /* @__PURE__ */ React.createElement("div", { className: "bg-amber-950/10 border border-amber-900/30 p-4 rounded-lg space-y-3 animate-fade-in" }, /* @__PURE__ */ React.createElement("p", { className: "text-xs text-amber-400 font-bold flex items-center gap-2" }, /* @__PURE__ */ React.createElement(Icons.AlertTriangle, null), " Yeni Araç / Müşteri Profili"), /* @__PURE__ */ React.createElement("div", { className: "space-y-1" }, /* @__PURE__ */ React.createElement("label", { className: "text-[10px] text-gray-400 block" }, "Müşteri Ad Soyadı"), /* @__PURE__ */ React.createElement(
       "input",
       {
         type: "text",
@@ -1202,10 +1258,13 @@
     products,
     setProducts,
     services,
+    settings,
     showNotification
   }) => {
+    const loyaltyTarget = (settings == null ? void 0 : settings.loyalty_target_visits) || 5;
     const [search, setSearch] = useState6("");
     const [filterType, setFilterType] = useState6("ALL");
+    const [showOnlyReady, setShowOnlyReady] = useState6(false);
     const [viewHistoryCust, setViewHistoryCust] = useState6(null);
     const [editCustomer, setEditCustomer] = useState6(null);
     const [editName, setEditName] = useState6("");
@@ -1213,15 +1272,31 @@
     const [editPlate, setEditPlate] = useState6("");
     const [editVehicleType, setEditVehicleType] = useState6("SEDAN");
     const [deleteConfirm, setDeleteConfirm] = useState6({ isOpen: false, targetId: null });
+    const customerLoyalty = useMemo3(() => {
+      const map = /* @__PURE__ */ new Map();
+      customers.forEach((c) => {
+        map.set(c.id, computeLoyaltyStats(c.id, transactions, loyaltyTarget));
+      });
+      return map;
+    }, [customers, transactions, loyaltyTarget]);
+    const readyCount = useMemo3(() => {
+      let count = 0;
+      customerLoyalty.forEach((stats) => {
+        if (stats.ready) count += 1;
+      });
+      return count;
+    }, [customerLoyalty]);
     const filteredCustomers = useMemo3(() => {
       return customers.filter((c) => {
         const nameMatch = c.name.toLowerCase().includes(search.toLowerCase());
         const plateMatch = c.plate.toLowerCase().includes(search.toLowerCase());
         const phoneMatch = c.phone.includes(search);
         const typeMatch = filterType === "ALL" || c.vehicleType === filterType;
-        return (nameMatch || plateMatch || phoneMatch) && typeMatch;
+        const stats = customerLoyalty.get(c.id);
+        const readyMatch = !showOnlyReady || stats && stats.ready;
+        return (nameMatch || plateMatch || phoneMatch) && typeMatch && readyMatch;
       });
-    }, [customers, search, filterType]);
+    }, [customers, search, filterType, showOnlyReady, customerLoyalty]);
     const getCustomerWashHistory = (custId) => {
       return transactions.filter((t) => t.customerId === custId && t.status === "COMPLETED").sort((a, b) => new Date(b.date) - new Date(a.date));
     };
@@ -1293,7 +1368,17 @@
       PageHeader,
       {
         title: "Müşteri Portföyü",
-        description: "Müşterilerinizi, araç sınıflarını ve sadakat geçmişlerini görüntüleyin."
+        description: "Müşterilerinizi, araç sınıflarını ve sadakat geçmişlerini görüntüleyin.",
+        actions: /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            type: "button",
+            onClick: () => setShowOnlyReady((prev) => !prev),
+            className: `px-4 py-2 rounded-lg text-sm font-semibold flex items-center space-x-2 transition border ${showOnlyReady ? "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow shadow-emerald-500/20" : "bg-darkBg-card hover:bg-darkBg-hover text-emerald-300 border-emerald-700/40"}`
+          },
+          /* @__PURE__ */ React.createElement(Icons.Gift, null),
+          /* @__PURE__ */ React.createElement("span", null, showOnlyReady ? "Tüm Müşteriler" : `Ödüle Hazır (${readyCount})`)
+        )
       }
     ), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex-1 relative" }, /* @__PURE__ */ React.createElement("span", { className: "absolute left-3 top-3 text-gray-400" }, /* @__PURE__ */ React.createElement(Icons.Search, null)), /* @__PURE__ */ React.createElement(
       "input",
@@ -1315,32 +1400,48 @@
       VEHICLE_TYPES.map((type) => /* @__PURE__ */ React.createElement("option", { key: type.id, value: type.id }, type.label.toLocaleUpperCase("tr-TR")))
     )), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" }, filteredCustomers.length === 0 ? /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-500 text-center py-12 col-span-3" }, "Aranan kriterlere uygun müşteri bulunamadı.") : filteredCustomers.map((cust) => {
       const history = getCustomerWashHistory(cust.id);
-      return /* @__PURE__ */ React.createElement("div", { key: cust.id, className: "bg-darkBg-card border border-darkBg-border p-5 rounded-xl shadow space-y-4 flex flex-col justify-between" }, /* @__PURE__ */ React.createElement("div", { className: "space-y-2" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between items-start" }, /* @__PURE__ */ React.createElement("span", { className: "text-sm font-extrabold bg-brand-500/10 text-brand-400 px-3 py-1 rounded-md tracking-wider uppercase" }, cust.plate), /* @__PURE__ */ React.createElement("span", { className: "text-[10px] bg-darkBg-deep border border-darkBg-border text-gray-400 px-2 py-0.5 rounded-full font-semibold" }, cust.vehicleType)), /* @__PURE__ */ React.createElement("div", { className: "text-left" }, /* @__PURE__ */ React.createElement("h4", { className: "text-sm font-bold text-white" }, cust.name), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-400" }, cust.phone))), /* @__PURE__ */ React.createElement("div", { className: "border-t border-darkBg-border pt-3 flex justify-between items-center text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "text-left" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 block text-[10px]" }, "Toplam Ziyaret"), /* @__PURE__ */ React.createElement("span", { className: "font-extrabold text-white text-sm" }, history.length, " Defa")), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-2 justify-end" }, /* @__PURE__ */ React.createElement(
-        "button",
+      const stats = customerLoyalty.get(cust.id) || computeLoyaltyStats(cust.id, transactions, loyaltyTarget);
+      const progressPercent = stats.ready ? 100 : stats.progress / stats.target * 100;
+      return /* @__PURE__ */ React.createElement(
+        "div",
         {
-          type: "button",
-          onClick: () => setViewHistoryCust(cust),
-          className: "px-3 py-1.5 bg-brand-900/30 text-brand-400 hover:bg-brand-600 hover:text-white rounded font-bold text-[10px] transition"
+          key: cust.id,
+          className: `bg-darkBg-card border p-5 rounded-xl shadow space-y-4 flex flex-col justify-between transition ${stats.ready ? "border-emerald-500/50 shadow-emerald-500/10" : "border-darkBg-border"}`
         },
-        "Hizmet Geçmişi"
-      ), /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          type: "button",
-          onClick: () => openEditCustomer(cust),
-          className: "px-3 py-1.5 bg-darkBg-deep text-gray-300 hover:bg-darkBg-hover rounded font-bold text-[10px] transition"
-        },
-        "Düzenle"
-      ), /* @__PURE__ */ React.createElement(
-        "button",
-        {
-          type: "button",
-          onClick: () => handleDeleteRequest(cust.id),
-          className: "p-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded transition",
-          title: "Müşteriyi Sil"
-        },
-        /* @__PURE__ */ React.createElement(Icons.Trash, null)
-      ))));
+        /* @__PURE__ */ React.createElement("div", { className: "space-y-2" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between items-start" }, /* @__PURE__ */ React.createElement("span", { className: "text-sm font-extrabold bg-brand-500/10 text-brand-400 px-3 py-1 rounded-md tracking-wider uppercase" }, cust.plate), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col items-end gap-1" }, /* @__PURE__ */ React.createElement("span", { className: "text-[10px] bg-darkBg-deep border border-darkBg-border text-gray-400 px-2 py-0.5 rounded-full font-semibold" }, cust.vehicleType), stats.ready && /* @__PURE__ */ React.createElement("span", { className: "text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-extrabold flex items-center gap-1 animate-pulse" }, /* @__PURE__ */ React.createElement(Icons.Gift, null), " ", stats.availableRewards, " Bedava"))), /* @__PURE__ */ React.createElement("div", { className: "text-left" }, /* @__PURE__ */ React.createElement("h4", { className: "text-sm font-bold text-white" }, cust.name), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-400" }, cust.phone)), /* @__PURE__ */ React.createElement("div", { className: "bg-darkBg-deep border border-darkBg-border rounded-lg p-2.5 space-y-1.5" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between items-center text-[10px] font-semibold" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-400" }, "Sadakat"), /* @__PURE__ */ React.createElement("span", { className: stats.ready ? "text-emerald-300 font-extrabold" : "text-gray-300" }, stats.ready ? "Bedava yıkama hazır" : `${stats.progress} / ${stats.target}`)), /* @__PURE__ */ React.createElement("div", { className: "w-full bg-darkBg-card rounded-full h-1.5 overflow-hidden" }, /* @__PURE__ */ React.createElement(
+          "div",
+          {
+            className: `h-1.5 rounded-full transition-all duration-300 ${stats.ready ? "bg-emerald-500" : "bg-brand-500"}`,
+            style: { width: `${progressPercent}%` }
+          }
+        )), !stats.ready && /* @__PURE__ */ React.createElement("p", { className: "text-[10px] text-gray-500" }, "Hediyeye ", /* @__PURE__ */ React.createElement("span", { className: "text-brand-400 font-extrabold" }, stats.nextRewardIn), " ücretli yıkama kaldı."))),
+        /* @__PURE__ */ React.createElement("div", { className: "border-t border-darkBg-border pt-3 flex justify-between items-center text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "text-left" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-500 block text-[10px]" }, "Toplam Ziyaret"), /* @__PURE__ */ React.createElement("span", { className: "font-extrabold text-white text-sm" }, history.length, " Defa")), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-2 justify-end" }, /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            type: "button",
+            onClick: () => setViewHistoryCust(cust),
+            className: "px-3 py-1.5 bg-brand-900/30 text-brand-400 hover:bg-brand-600 hover:text-white rounded font-bold text-[10px] transition"
+          },
+          "Hizmet Geçmişi"
+        ), /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            type: "button",
+            onClick: () => openEditCustomer(cust),
+            className: "px-3 py-1.5 bg-darkBg-deep text-gray-300 hover:bg-darkBg-hover rounded font-bold text-[10px] transition"
+          },
+          "Düzenle"
+        ), /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            type: "button",
+            onClick: () => handleDeleteRequest(cust.id),
+            className: "p-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded transition",
+            title: "Müşteriyi Sil"
+          },
+          /* @__PURE__ */ React.createElement(Icons.Trash, null)
+        )))
+      );
     })), editCustomer && /* @__PURE__ */ React.createElement("div", { className: "fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4" }, /* @__PURE__ */ React.createElement("div", { className: "w-full max-w-md bg-darkBg-card border border-darkBg-border rounded-xl p-6 shadow-2xl space-y-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between items-center border-b border-darkBg-border pb-2" }, /* @__PURE__ */ React.createElement("div", { className: "text-left" }, /* @__PURE__ */ React.createElement("h3", { className: "text-base font-bold text-white" }, "Müşteri Kartını Düzenle"), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-400" }, "Plaka değişirse mevcut işlem geçmişi aynı müşteri kartına bağlı kalır.")), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: closeEditCustomer, className: "text-gray-400 hover:text-white" }, /* @__PURE__ */ React.createElement(Icons.X, null))), /* @__PURE__ */ React.createElement("form", { onSubmit: saveEditedCustomer, className: "space-y-4 text-xs" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "space-y-1" }, /* @__PURE__ */ React.createElement("label", { className: "text-gray-400 block font-semibold" }, "Plaka *"), /* @__PURE__ */ React.createElement(
       "input",
       {
@@ -2356,7 +2457,8 @@
         setQuickPlateContext,
         isSensitiveHidden,
         setIsSensitiveHidden,
-        requestPinApproval
+        requestPinApproval,
+        settings
       }
     ), activeTab === "sales" && /* @__PURE__ */ React.createElement(
       SalesTab,
@@ -2398,6 +2500,7 @@
         products,
         setProducts,
         services,
+        settings,
         showNotification
       }
     ), activeTab === "services" && /* @__PURE__ */ React.createElement(

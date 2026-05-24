@@ -1,6 +1,6 @@
 const { useMemo, useState } = React;
 
-import { VEHICLE_TYPES, normalizePlate, formatCurrency } from '../core/app-core.js';
+import { VEHICLE_TYPES, normalizePlate, formatCurrency, computeLoyaltyStats } from '../core/app-core.js';
 import { PageHeader } from '../ui/PageHeader.jsx';
 import { CustomFinanceChart } from '../ui/FinanceChart.jsx';
 import { Icons } from '../core/icons.jsx';
@@ -15,8 +15,10 @@ export const DashboardTab = ({
     setQuickPlateContext,
     isSensitiveHidden,
     setIsSensitiveHidden,
-    requestPinApproval
+    requestPinApproval,
+    settings
 }) => {
+    const loyaltyTarget = settings?.loyalty_target_visits || 5;
     const [quickPlate, setQuickPlate] = useState('');
 
     const completedWashRevenues = useMemo(() => {
@@ -59,6 +61,13 @@ export const DashboardTab = ({
         });
         return stats;
     }, [customers]);
+
+    const loyaltyReadyCustomers = useMemo(() => {
+        return customers
+            .map(c => ({ customer: c, stats: computeLoyaltyStats(c.id, transactions, loyaltyTarget) }))
+            .filter(item => item.stats.ready)
+            .sort((a, b) => b.stats.availableRewards - a.stats.availableRewards);
+    }, [customers, transactions, loyaltyTarget]);
 
     const handleQuickSaleRedirect = (plateNum) => {
         setQuickPlateContext(plateNum);
@@ -185,6 +194,53 @@ export const DashboardTab = ({
                         })}
                     </div>
                 </div>
+            </div>
+
+            <div className="bg-darkBg-card border border-emerald-500/30 rounded-xl p-5 shadow text-left">
+                <div className="flex items-center justify-between border-b border-darkBg-border pb-3 mb-3">
+                    <div>
+                        <h3 className="text-base font-bold text-white flex items-center gap-2">
+                            <span className="text-emerald-400"><Icons.Gift /></span>
+                            Bedava Yıkama Hak Eden Müşteriler
+                        </h3>
+                        <p className="text-xs text-gray-400 mt-1">
+                            Her {loyaltyTarget} ücretli yıkama sonrası 1 bedava yıkama. Listeyi arayıp müşteriyi bilgilendirebilirsiniz.
+                        </p>
+                    </div>
+                    <span className="text-[11px] bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 px-3 py-1 rounded-full font-extrabold whitespace-nowrap">
+                        {loyaltyReadyCustomers.length} müşteri
+                    </span>
+                </div>
+
+                {loyaltyReadyCustomers.length === 0 ? (
+                    <p className="text-xs text-gray-500 py-6 text-center">
+                        Şu an bedava yıkama hak eden müşteri bulunmuyor. Müşteriler {loyaltyTarget} ücretli yıkamayı tamamladığında burada listelenir.
+                    </p>
+                ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[280px] overflow-y-auto pr-1">
+                        {loyaltyReadyCustomers.map(({ customer, stats }) => (
+                            <button
+                                type="button"
+                                key={customer.id}
+                                onClick={() => handleQuickSaleRedirect(customer.plate)}
+                                className="text-left bg-darkBg-deep border border-emerald-500/30 hover:border-emerald-400 hover:bg-emerald-950/20 rounded-lg p-3 transition focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
+                                title="Hizmet girişine git"
+                            >
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-extrabold text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded uppercase tracking-wider">{customer.plate}</span>
+                                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-extrabold px-2 py-0.5 rounded-full">
+                                        {stats.availableRewards}× bedava
+                                    </span>
+                                </div>
+                                <p className="text-sm font-bold text-white mt-2 truncate">{customer.name}</p>
+                                <p className="text-[10px] text-gray-400 truncate">{customer.phone}</p>
+                                <p className="text-[10px] text-emerald-400 font-semibold mt-2">
+                                    {stats.paidVisits} ücretli yıkama tamamlandı
+                                </p>
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-left">

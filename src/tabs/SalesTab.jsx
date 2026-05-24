@@ -1,6 +1,6 @@
 const { useState, useEffect, useMemo } = React;
 
-import { normalizePlate, validateTurkishPlate, formatCurrency, VEHICLE_TYPES } from '../core/app-core.js';
+import { normalizePlate, validateTurkishPlate, formatCurrency, VEHICLE_TYPES, computeLoyaltyStats } from '../core/app-core.js';
 import { generateUUID } from '../core/db.js';
 import { PageHeader } from '../ui/PageHeader.jsx';
 import { Icons } from '../core/icons.jsx';
@@ -53,26 +53,20 @@ export const SalesTab = ({
     }, [quickPlateContext]);
 
     const loyaltyStats = useMemo(() => {
-        if (!matchedCustomer) return { visitsCount: 0, availableRewards: 0 };
-        
-        const clientWashes = transactions.filter(t => 
-            t.customerId === matchedCustomer.id && 
-            t.status === 'COMPLETED'
-        );
-        
-        const paidVisits = clientWashes.filter(t => !t.isLoyaltyReward).length;
-        const target = settings.loyalty_target_visits || 5;
-        
-        const earnedRewards = Math.floor(paidVisits / target);
-        const usedRewards = clientWashes.filter(t => t.isLoyaltyReward).length;
-        const availableRewards = Math.max(0, earnedRewards - usedRewards);
-
+        if (!matchedCustomer) {
+            return { paidVisits: 0, availableRewards: 0, nextRewardIn: 0, target: settings.loyalty_target_visits || 5, progress: 0, ready: false };
+        }
+        const stats = computeLoyaltyStats(matchedCustomer.id, transactions, settings.loyalty_target_visits);
         return {
-            visitsCount: paidVisits,
-            availableRewards,
-            nextRewardIn: target - (paidVisits % target)
+            visitsCount: stats.paidVisits,
+            paidVisits: stats.paidVisits,
+            availableRewards: stats.availableRewards,
+            nextRewardIn: stats.nextRewardIn,
+            target: stats.target,
+            progress: stats.progress,
+            ready: stats.ready
         };
-    }, [matchedCustomer, transactions, settings]);
+    }, [matchedCustomer, transactions, settings.loyalty_target_visits]);
 
     const currentVehicleType = matchedCustomer ? matchedCustomer.vehicleType : vehicleType;
     
@@ -208,18 +202,28 @@ export const SalesTab = ({
                             <p className="text-sm font-bold text-white">{matchedCustomer.name}</p>
                             <p className="text-xs text-gray-400">{matchedCustomer.phone}</p>
                             
-                            <div className="border-t border-darkBg-border pt-2 mt-2 space-y-1">
-                                <div className="flex justify-between text-xs">
-                                    <span className="text-gray-400">Ücretli Yıkama Sayısı:</span>
-                                    <span className="text-white font-bold">{loyaltyStats.visitsCount}</span>
+                            <div className="border-t border-darkBg-border pt-2 mt-2 space-y-2">
+                                <div className="flex justify-between items-center text-xs">
+                                    <span className="text-gray-400">Sadakat Programı</span>
+                                    <span className="text-white font-bold">{loyaltyStats.paidVisits} / {loyaltyStats.target} ücretli yıkama</span>
                                 </div>
-                                {loyaltyStats.availableRewards > 0 ? (
-                                    <div className="bg-emerald-500/10 border border-emerald-500/30 p-2 rounded flex items-center justify-between text-emerald-400 text-xs mt-1 animate-pulse">
-                                        <span className="font-semibold">Hediye Yıkama Hazır</span>
-                                        <span className="font-extrabold bg-emerald-500 text-white px-2 py-0.5 rounded text-[10px]">{loyaltyStats.availableRewards} Adet</span>
+                                <div className="w-full bg-darkBg-deep rounded-full h-1.5 overflow-hidden">
+                                    <div
+                                        className={`h-1.5 rounded-full transition-all duration-300 ${loyaltyStats.ready ? 'bg-emerald-500' : 'bg-brand-500'}`}
+                                        style={{ width: `${loyaltyStats.ready ? 100 : (loyaltyStats.progress / loyaltyStats.target) * 100}%` }}
+                                    />
+                                </div>
+                                {loyaltyStats.ready ? (
+                                    <div className="bg-emerald-500/10 border border-emerald-500/30 p-2 rounded flex items-center justify-between text-emerald-400 text-xs animate-pulse">
+                                        <span className="font-semibold flex items-center gap-1">
+                                            <Icons.Gift /> Hediye Yıkama Hazır
+                                        </span>
+                                        <span className="font-extrabold bg-emerald-500 text-white px-2 py-0.5 rounded text-[10px]">{loyaltyStats.availableRewards} adet</span>
                                     </div>
                                 ) : (
-                                    <p className="text-[10px] text-gray-500 font-medium">Hediyeye kalan ziyaret: <span className="text-brand-400 font-semibold">{loyaltyStats.nextRewardIn}</span></p>
+                                    <p className="text-[10px] text-gray-500 font-medium">
+                                        Hediyeye <span className="text-brand-400 font-extrabold">{loyaltyStats.nextRewardIn}</span> ücretli yıkama kaldı.
+                                    </p>
                                 )}
                             </div>
                         </div>

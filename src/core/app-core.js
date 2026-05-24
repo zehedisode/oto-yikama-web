@@ -57,3 +57,44 @@ export const parsePositiveInteger = (value, fallback = 0) => {
 export const hasOwn = (object, key) => {
     return Object.prototype.hasOwnProperty.call(object, key);
 };
+
+// Tek noktadan sadakat hesaplaması.
+// Kural: "loyalty_target_visits" kadar UCRETLI yikama biriktiren musteri,
+// bir sonraki (target+1) yikamada bedava hizmet kazanir. Ornegin target=5 ise
+// 5 ucretli yikamadan sonra 6. yikama odul olarak verilebilir.
+export const computeLoyaltyStats = (customerId, transactions, target = 5) => {
+    const safeTarget = Math.max(1, parsePositiveInteger(target, 5));
+    const empty = {
+        target: safeTarget,
+        paidVisits: 0,
+        rewardVisits: 0,
+        progress: 0,
+        availableRewards: 0,
+        nextRewardIn: safeTarget,
+        ready: false,
+        completed: 0
+    };
+    if (!customerId || !Array.isArray(transactions)) return empty;
+
+    const completed = transactions.filter(
+        (t) => t && t.customerId === customerId && t.status === 'COMPLETED'
+    );
+    const paidVisits = completed.filter((t) => !t.isLoyaltyReward).length;
+    const rewardVisits = completed.filter((t) => t.isLoyaltyReward).length;
+
+    const earnedRewards = Math.floor(paidVisits / safeTarget);
+    const availableRewards = Math.max(0, earnedRewards - rewardVisits);
+    const progress = paidVisits % safeTarget;
+    const nextRewardIn = safeTarget - progress;
+
+    return {
+        target: safeTarget,
+        paidVisits,
+        rewardVisits,
+        progress,
+        availableRewards,
+        nextRewardIn: availableRewards > 0 ? 0 : nextRewardIn,
+        ready: availableRewards > 0,
+        completed: completed.length
+    };
+};

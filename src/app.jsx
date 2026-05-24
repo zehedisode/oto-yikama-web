@@ -298,6 +298,7 @@ function App() {
                             isSensitiveHidden={isSensitiveHidden}
                             setIsSensitiveHidden={setIsSensitiveHidden}
                             requestPinApproval={requestPinApproval}
+                            settings={settings}
                         />
                     )}
                     
@@ -342,6 +343,7 @@ function App() {
                             products={products}
                             setProducts={setProducts}
                             services={services}
+                            settings={settings}
                             showNotification={showNotification}
                         />
                     )}
