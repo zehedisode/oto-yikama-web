@@ -6,6 +6,12 @@ import {
     resetPinLockState,
     isPinLockedOut
 } from './core/security.js';
+import {
+    isAutoBackupSupported,
+    loadStoredHandle,
+    queryHandlePermission,
+    writeJsonToHandle
+} from './core/auto-backup.js';
 
 import { AppLogo } from './ui/AppLogo.jsx';
 import { NavButton } from './ui/NavButton.jsx';
@@ -85,6 +91,64 @@ function App() {
     useEffect(() => { db.set(DB_KEYS.SALES, sales); }, [sales]);
     useEffect(() => { db.set(DB_KEYS.CAMPAIGNS, campaigns); }, [campaigns]);
     useEffect(() => { db.set(DB_KEYS.SETTINGS, settings); }, [settings]);
+
+    // Otomatik dosya yedekleme: değişikliklerden sonra debounce'lu yazım.
+    const autoBackupHandleRef = useRef(null);
+    const autoBackupTimerRef = useRef(null);
+    const autoBackupSkipFirstRef = useRef(true);
+    const autoBackupWarnedRef = useRef(false);
+
+    useEffect(() => {
+        if (!isAutoBackupSupported()) return;
+        let cancelled = false;
+        loadStoredHandle().then((handle) => {
+            if (!cancelled) autoBackupHandleRef.current = handle || null;
+        }).catch(() => undefined);
+        return () => { cancelled = true; };
+    }, []);
+
+    useEffect(() => {
+        // İlk render'da yazım yapma, sadece kullanıcı değişikliklerinden sonra.
+        if (autoBackupSkipFirstRef.current) {
+            autoBackupSkipFirstRef.current = false;
+            return;
+        }
+        if (!isAutoBackupSupported()) return;
+
+        if (autoBackupTimerRef.current) {
+            clearTimeout(autoBackupTimerRef.current);
+        }
+        autoBackupTimerRef.current = setTimeout(async () => {
+            const handle = autoBackupHandleRef.current;
+            if (!handle) return;
+            try {
+                const perm = await queryHandlePermission(handle);
+                if (perm !== 'granted') {
+                    if (!autoBackupWarnedRef.current) {
+                        autoBackupWarnedRef.current = true;
+                        showNotification("Otomatik yedekleme: yazma izni yenilenmeli. Sistem & Yedekleme'den izin verin.", "warning");
+                    }
+                    return;
+                }
+                const snapshot = {
+                    users, customers, services, transactions, appointments,
+                    expenses, products, sales, campaigns, settings
+                };
+                await writeJsonToHandle(handle, snapshot);
+                autoBackupWarnedRef.current = false;
+            } catch (err) {
+                if (err?.code !== 'PERMISSION_REQUIRED') {
+                    console.warn('Otomatik yedek yazımı başarısız:', err);
+                }
+            }
+        }, 1500);
+
+        return () => {
+            if (autoBackupTimerRef.current) {
+                clearTimeout(autoBackupTimerRef.current);
+            }
+        };
+    }, [users, customers, services, transactions, appointments, expenses, products, sales, campaigns, settings]);
 
     useEffect(() => {
         const handleActivity = () => {

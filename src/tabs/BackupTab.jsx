@@ -2,6 +2,15 @@ const { useEffect, useState } = React;
 
 import { DEFAULT_SETTINGS, parsePositiveInteger, hasOwn } from '../core/app-core.js';
 import { createCleanDatabase, normalizeBackupData, persistDatabaseObject } from '../core/db.js';
+import {
+    isAutoBackupSupported,
+    loadStoredHandle,
+    pickAndStoreHandle,
+    clearStoredHandle,
+    queryHandlePermission,
+    requestHandlePermission,
+    writeJsonToHandle
+} from '../core/auto-backup.js';
 import { PageHeader } from '../ui/PageHeader.jsx';
 import { CustomConfirmModal } from '../ui/ConfirmModal.jsx';
 import { Icons } from '../core/icons.jsx';
@@ -37,6 +46,25 @@ export const BackupTab = ({
     );
 
     const [resetConfirm, setResetConfirm] = useState(false);
+
+    // Otomatik dosyaya yedekleme durumu
+    const autoSupported = isAutoBackupSupported();
+    const [autoHandle, setAutoHandle] = useState(null);
+    const [autoPermission, setAutoPermission] = useState('unknown');
+    const [autoBusy, setAutoBusy] = useState(false);
+
+    useEffect(() => {
+        if (!autoSupported) return;
+        let cancelled = false;
+        (async () => {
+            const handle = await loadStoredHandle();
+            if (cancelled || !handle) return;
+            setAutoHandle(handle);
+            const perm = await queryHandlePermission(handle);
+            if (!cancelled) setAutoPermission(perm);
+        })();
+        return () => { cancelled = true; };
+    }, [autoSupported]);
 
     useEffect(() => {
         setPinSetting(users[0]?.pinCode || '1234');
@@ -147,6 +175,86 @@ export const BackupTab = ({
         showNotification("Tüm işlem verileri silindi. Sistem temiz başlangıç durumuna alındı.", "warning");
     };
 
+    const buildSnapshot = () => ({
+        users,
+        customers,
+        services,
+        transactions,
+        appointments,
+        expenses,
+        products,
+        sales,
+        campaigns,
+        settings
+    });
+
+    const handleAutoBackupConnect = async () => {
+        if (!autoSupported) {
+            showNotification("Bu tarayıcı otomatik yedeklemeyi desteklemiyor. Chrome veya Edge önerilir.", "error");
+            return;
+        }
+        try {
+            setAutoBusy(true);
+            const handle = await pickAndStoreHandle();
+            setAutoHandle(handle);
+            const perm = await queryHandlePermission(handle);
+            setAutoPermission(perm);
+            // İlk yazımı hemen yap.
+            await writeJsonToHandle(handle, buildSnapshot());
+            setSettings(prev => ({ ...DEFAULT_SETTINGS, ...prev, last_backup_at: new Date().toISOString() }));
+            showNotification("Otomatik yedekleme bağlandı. Tüm değişiklikler artık dosyaya yazılacak.");
+        } catch (err) {
+            if (err && err.name === 'AbortError') return;
+            console.error('Auto-backup connect error:', err);
+            showNotification("Otomatik yedekleme bağlanamadı: " + (err?.message || 'bilinmeyen hata'), "error");
+        } finally {
+            setAutoBusy(false);
+        }
+    };
+
+    const handleAutoBackupGrant = async () => {
+        if (!autoHandle) return;
+        const perm = await requestHandlePermission(autoHandle);
+        setAutoPermission(perm);
+        if (perm === 'granted') {
+            try {
+                await writeJsonToHandle(autoHandle, buildSnapshot());
+                setSettings(prev => ({ ...DEFAULT_SETTINGS, ...prev, last_backup_at: new Date().toISOString() }));
+                showNotification("İzin yenilendi ve dosya güncellendi.");
+            } catch (err) {
+                showNotification("Dosyaya yazılamadı: " + (err?.message || 'hata'), "error");
+            }
+        } else {
+            showNotification("Yazma izni reddedildi.", "warning");
+        }
+    };
+
+    const handleAutoBackupNow = async () => {
+        if (!autoHandle) return;
+        try {
+            setAutoBusy(true);
+            await writeJsonToHandle(autoHandle, buildSnapshot());
+            setSettings(prev => ({ ...DEFAULT_SETTINGS, ...prev, last_backup_at: new Date().toISOString() }));
+            showNotification("Yedek dosyası güncellendi.");
+        } catch (err) {
+            if (err?.code === 'PERMISSION_REQUIRED') {
+                showNotification("Önce izni yenileyin.", "warning");
+                setAutoPermission('prompt');
+            } else {
+                showNotification("Yazma hatası: " + (err?.message || 'hata'), "error");
+            }
+        } finally {
+            setAutoBusy(false);
+        }
+    };
+
+    const handleAutoBackupDisconnect = async () => {
+        await clearStoredHandle();
+        setAutoHandle(null);
+        setAutoPermission('unknown');
+        showNotification("Otomatik yedekleme kaldırıldı.", "warning");
+    };
+
     return (
         <div className="space-y-6 text-left">
             <CustomConfirmModal 
@@ -199,6 +307,111 @@ export const BackupTab = ({
                         </div>
                     </div>
                 </div>
+
+                <div className="bg-darkBg-card border border-emerald-500/30 rounded-xl p-5 shadow space-y-4">
+                    <div className="flex items-start justify-between gap-2">
+                        <div>
+                            <h3 className="text-sm font-bold text-gray-200 flex items-center space-x-2">
+                                <Icons.Download />
+                                <span>Otomatik Dosya Yedekleme</span>
+                            </h3>
+                            <p className="text-[10px] text-emerald-300/80 font-bold uppercase tracking-wider mt-1">Bir kez seç, unut</p>
+                        </div>
+                        {autoHandle && autoPermission === 'granted' && (
+                            <span className="text-[10px] bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded font-extrabold whitespace-nowrap shrink-0">AKTİF</span>
+                        )}
+                        {autoHandle && autoPermission !== 'granted' && (
+                            <span className="text-[10px] bg-amber-500/15 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded font-extrabold whitespace-nowrap shrink-0">İZİN GEREKLİ</span>
+                        )}
+                    </div>
+                    <p className="text-xs text-gray-400">
+                        Bir kez konum (örn. <span className="text-brand-300 font-bold">OneDrive</span>, <span className="text-brand-300 font-bold">Drive klasörü</span>, USB) seçin. Veri her değiştiğinde panel o JSON dosyasını sessizce günceller.
+                    </p>
+
+                    {!autoSupported && (
+                        <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/30 rounded p-3 text-amber-200 text-[11px]">
+                            <span className="shrink-0 mt-0.5"><Icons.AlertTriangle /></span>
+                            <span>Bu tarayıcı File System Access API'sini desteklemiyor. Otomatik yedekleme için <b>Chrome</b> veya <b>Edge</b> kullanın. Manuel yedekleme yine sol kartta çalışıyor.</span>
+                        </div>
+                    )}
+
+                    {autoSupported && !autoHandle && (
+                        <div className="space-y-2">
+                            <div className="bg-darkBg-deep border border-darkBg-border rounded p-3 space-y-1.5">
+                                <p className="text-[11px] text-gray-300 font-bold">Nasıl çalışır?</p>
+                                <ol className="text-[11px] text-gray-400 list-decimal list-inside space-y-0.5">
+                                    <li>Aşağıdaki butona tıklayın</li>
+                                    <li>OneDrive/Drive/USB klasörünüzü seçin</li>
+                                    <li>Bir dosya adı verin (varsayılan otomatik gelir)</li>
+                                    <li>Bittiniz. Her değişiklikte dosya yenilenir.</li>
+                                </ol>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleAutoBackupConnect}
+                                disabled={autoBusy}
+                                className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold py-2.5 rounded transition flex items-center justify-center gap-2"
+                            >
+                                <Icons.Plus />
+                                <span>{autoBusy ? 'Bağlanıyor...' : 'Yedek Konumu Bağla'}</span>
+                            </button>
+                        </div>
+                    )}
+
+                    {autoSupported && autoHandle && (
+                        <div className="space-y-2">
+                            <div className="bg-darkBg-deep border border-darkBg-border rounded p-3 space-y-1">
+                                <div className="flex justify-between items-center text-[11px]">
+                                    <span className="text-gray-400">Dosya:</span>
+                                    <span className="text-gray-200 font-bold truncate ml-2" title={autoHandle.name}>{autoHandle.name || '—'}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-[11px]">
+                                    <span className="text-gray-400">Son yazım:</span>
+                                    <span className="text-gray-200 font-bold">
+                                        {settings.last_backup_at ? new Date(settings.last_backup_at).toLocaleString('tr-TR') : '—'}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center text-[11px]">
+                                    <span className="text-gray-400">Durum:</span>
+                                    <span className={`font-bold ${autoPermission === 'granted' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                        {autoPermission === 'granted' ? 'İzin verildi' : autoPermission === 'prompt' ? 'İzin yenilenmeli' : autoPermission === 'denied' ? 'İzin reddedildi' : 'Bilinmiyor'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {autoPermission !== 'granted' && (
+                                <button
+                                    type="button"
+                                    onClick={handleAutoBackupGrant}
+                                    className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded transition"
+                                >
+                                    İzni Yenile
+                                </button>
+                            )}
+
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    type="button"
+                                    onClick={handleAutoBackupNow}
+                                    disabled={autoBusy}
+                                    className="bg-brand-600 hover:bg-brand-500 disabled:opacity-60 text-white font-bold py-2 rounded transition"
+                                >
+                                    {autoBusy ? 'Yazılıyor...' : 'Şimdi Yedekle'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleAutoBackupDisconnect}
+                                    className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-bold py-2 rounded transition"
+                                >
+                                    Bağlantıyı Kaldır
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6 text-xs text-left">
 
                 <div className="bg-darkBg-card border border-darkBg-border rounded-xl p-5 shadow space-y-4">
                     <h3 className="text-sm font-bold text-gray-200 flex items-center space-x-2">
