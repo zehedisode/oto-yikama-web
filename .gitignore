@@ -12,6 +12,9 @@ dist/
 .kilo/node_modules/
 .kilo/package-lock.json
 
+# Geçici scriptler
+.tmp-*.ps1
+
 # Not: assets/css/tailwind.css ve assets/js/app.js DERLENMIS dosyalardir.
 # index.html dogrudan acilabilsin diye repo'da bilerek tutuluyorlar.
 # `npm run build` ile yeniden uretilebilirler.

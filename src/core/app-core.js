@@ -1,7 +1,9 @@
 export const DEFAULT_SETTINGS = Object.freeze({
     loyalty_target_visits: 5,
     idle_lock_time: 60,
-    pin_security_enabled: true
+    pin_security_enabled: true,
+    last_backup_at: null,
+    backup_reminder_days: 7
 });
 
 export const VEHICLE_TYPES = Object.freeze([

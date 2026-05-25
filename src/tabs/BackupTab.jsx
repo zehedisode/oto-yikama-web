@@ -109,6 +109,7 @@ export const BackupTab = ({
         downloadAnchor.click();
         downloadAnchor.remove();
 
+        setSettings(prev => ({ ...DEFAULT_SETTINGS, ...prev, last_backup_at: new Date().toISOString() }));
         showNotification("Veritabanı yedeği dışa aktarıldı!");
     };
 

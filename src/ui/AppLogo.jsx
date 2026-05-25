@@ -6,8 +6,8 @@ export const AppLogo = ({ compact = false }) => (
             <Icons.Car />
         </div>
         <div className="text-left min-w-0">
-            <h1 className={`${compact ? 'text-sm' : 'text-sm'} font-black text-white leading-none truncate`}>Oto Yıkama Pro</h1>
-            {!compact && <span className="text-[10px] text-gray-500 font-semibold uppercase">Lokal Yönetim</span>}
+            <h1 className={`${compact ? 'text-sm' : 'text-sm'} font-black text-white leading-none truncate`}>Zehedisode Oto Yıkama</h1>
+            {!compact && <span className="text-[10px] text-gray-500 font-semibold uppercase">Yönetim Paneli</span>}
         </div>
     </div>
 );

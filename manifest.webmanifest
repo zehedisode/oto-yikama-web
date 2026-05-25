@@ -1,0 +1,21 @@
+{
+  "name": "Zehedisode Oto Yıkama",
+  "short_name": "Zehedisode",
+  "description": "Zehedisode Oto Yıkama yönetim ve CRM paneli",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b1115",
+  "theme_color": "#0b1115",
+  "lang": "tr",
+  "dir": "ltr",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "./assets/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

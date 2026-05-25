@@ -21,6 +21,22 @@ export const DashboardTab = ({
     const loyaltyTarget = settings?.loyalty_target_visits || 5;
     const [quickPlate, setQuickPlate] = useState('');
 
+    const backupReminder = useMemo(() => {
+        const reminderDays = Math.max(1, Number(settings?.backup_reminder_days) || 7);
+        const last = settings?.last_backup_at ? new Date(settings.last_backup_at) : null;
+        if (!last || Number.isNaN(last.getTime())) {
+            return { needsBackup: true, daysSince: null, lastDate: null, reminderDays };
+        }
+        const diffMs = Date.now() - last.getTime();
+        const daysSince = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        return {
+            needsBackup: daysSince >= reminderDays,
+            daysSince,
+            lastDate: last,
+            reminderDays
+        };
+    }, [settings?.last_backup_at, settings?.backup_reminder_days]);
+
     const completedWashRevenues = useMemo(() => {
         return transactions
             .filter(t => t.status === 'COMPLETED')
@@ -110,6 +126,27 @@ export const DashboardTab = ({
                     </>
                 }
             />
+
+            {backupReminder.needsBackup && (
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('backup')}
+                    className="w-full text-left bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/40 rounded-xl p-4 flex items-start gap-3 transition"
+                >
+                    <span className="shrink-0 mt-0.5 text-amber-400"><Icons.AlertTriangle /></span>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-amber-200">
+                            {backupReminder.lastDate
+                                ? `Yedeklemenin üzerinden ${backupReminder.daysSince} gün geçti`
+                                : 'Hiç yedek alınmamış'}
+                        </p>
+                        <p className="text-[11px] text-amber-100/70 mt-0.5">
+                            Verilerin tamamı yalnızca tarayıcıda saklanır. {backupReminder.reminderDays} günde bir JSON yedeği indirmeniz önerilir.
+                            <span className="text-amber-200 font-bold ml-1 underline">Yedeklemeye git →</span>
+                        </p>
+                    </div>
+                </button>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
                 <div className="bg-darkBg-card border border-darkBg-border p-5 rounded-xl flex items-center justify-between shadow">
