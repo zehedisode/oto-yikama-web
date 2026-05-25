@@ -9,12 +9,9 @@ import {
 
 import { AppLogo } from './ui/AppLogo.jsx';
 import { NavButton } from './ui/NavButton.jsx';
-import { PageHeader } from './ui/PageHeader.jsx';
-import { CustomConfirmModal } from './ui/ConfirmModal.jsx';
 import { LockScreen } from './ui/LockScreen.jsx';
 import { PinGateModal } from './ui/PinGateModal.jsx';
 import { NotificationBadge } from './ui/NotificationBadge.jsx';
-import { CustomFinanceChart } from './ui/FinanceChart.jsx';
 
 import { DashboardTab } from './tabs/DashboardTab.jsx';
 import { SalesTab } from './tabs/SalesTab.jsx';
@@ -23,6 +20,7 @@ import { CustomersTab } from './tabs/CustomersTab.jsx';
 import { ServicesTab } from './tabs/ServicesTab.jsx';
 import { ProductsTab } from './tabs/ProductsTab.jsx';
 import { FinanceTab } from './tabs/FinanceTab.jsx';
+import { IncomeTab } from './tabs/IncomeTab.jsx';
 import { CampaignsTab } from './tabs/CampaignsTab.jsx';
 import { BackupTab } from './tabs/BackupTab.jsx';
 
@@ -38,6 +36,7 @@ const NAV_ITEMS = [
     { id: 'services', label: 'Hizmet Kataloğu', icon: Icons.Clipboard },
     { id: 'products', label: 'Stok & Market', icon: Icons.Package },
     { id: 'finance', label: 'Kasa & Giderler', icon: Icons.Coins },
+    { id: 'income', label: 'Gelir Kayıtları', icon: Icons.TrendingUp },
     { id: 'campaigns', label: 'Kampanyalar', icon: Icons.Percent },
     { id: 'backup', label: 'Sistem & Yedekleme', icon: Icons.Database }
 ];
@@ -67,6 +66,7 @@ function App() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     const [quickPlateContext, setQuickPlateContext] = useState('');
+    const [pendingFromAppointment, setPendingFromAppointment] = useState(null);
     const [pinGateModal, setPinGateModal] = useState(createEmptyPinGate);
     const [gatePinInput, setGatePinInput] = useState('');
 
@@ -123,6 +123,13 @@ function App() {
             setIsLocked(false);
         }
     }, [settings.pin_security_enabled, isLocked]);
+
+    const handlePinRecovery = () => {
+        setUsers(prev => prev.map(u => u.id === 'admin-1' ? { ...u, pinCode: '1234' } : u));
+        resetPinLockState();
+        setPinError(false);
+        showNotification("PIN kodu 1234 olarak sıfırlandı. Lütfen Sistem & Yedekleme'den yeni bir PIN belirleyin.", "warning");
+    };
 
     const handleUnlock = (enteredPin) => {
         if (isPinLockedOut()) {
@@ -192,7 +199,7 @@ function App() {
 
     return (
         <div className="min-h-screen flex flex-col md:flex-row bg-darkBg-deep text-gray-200">
-            {isLocked && <LockScreen users={users} handleUnlock={handleUnlock} pinError={pinError} />}
+            {isLocked && <LockScreen users={users} handleUnlock={handleUnlock} pinError={pinError} onPinReset={handlePinRecovery} />}
 
             <PinGateModal 
                 isOpen={pinGateModal.isOpen}
@@ -206,26 +213,36 @@ function App() {
             <NotificationBadge notification={notification} />
 
             {/* SIDEBAR FOR DESKTOP VIEW */}
-            <aside className="hidden md:flex flex-col w-64 bg-darkBg-card border-r border-darkBg-border p-5 justify-between flex-shrink-0">
-                <div className="space-y-6">
+            <aside className="hidden md:flex flex-col w-64 bg-darkBg-card border-r border-darkBg-border flex-shrink-0 h-screen sticky top-0 overflow-hidden">
+                <div className="p-5 pb-3 shrink-0">
                     <AppLogo />
-
-                    <nav className="space-y-1 text-xs">
-                        {NAV_ITEMS.map(item => (
-                            <NavButton
-                                key={item.id}
-                                item={item}
-                                activeTab={activeTab}
-                                onSelect={setActiveTab}
-                            />
-                        ))}
-                    </nav>
                 </div>
 
-                <div className="border-t border-darkBg-border pt-4 text-xs space-y-2 text-left">
-                    <div className="flex justify-between items-center text-[10px] text-gray-500 font-semibold">
-                        <span>Oturum: Admin</span>
-                        <span className="bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded">Lokal</span>
+                <nav className="flex-1 overflow-y-auto px-5 space-y-1 text-xs">
+                    {NAV_ITEMS.map(item => (
+                        <NavButton
+                            key={item.id}
+                            item={item}
+                            activeTab={activeTab}
+                            onSelect={setActiveTab}
+                        />
+                    ))}
+                </nav>
+
+                <div className="p-5 pt-4 border-t border-darkBg-border space-y-3 shrink-0">
+                    <div className="bg-darkBg-deep border border-darkBg-border rounded-lg px-3 py-2.5 flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-7 h-7 rounded-full bg-brand-600/20 border border-brand-500/40 flex items-center justify-center text-brand-300 text-[10px] font-extrabold shrink-0">
+                                A
+                            </span>
+                            <div className="min-w-0">
+                                <span className="block text-[10px] text-gray-500 leading-tight">Oturum</span>
+                                <span className="block text-xs font-bold text-gray-200 truncate">Admin</span>
+                            </div>
+                        </div>
+                        <span className="text-[9px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider shrink-0">
+                            Lokal
+                        </span>
                     </div>
                     <button
                         type="button"
@@ -233,9 +250,11 @@ function App() {
                             setIsLocked(true);
                             showNotification("Panel kilitlendi.", "warning");
                         }}
-                        className="w-full bg-darkBg-deep hover:bg-red-950/20 hover:text-red-400 border border-darkBg-border py-2 rounded-lg font-bold flex items-center justify-center space-x-2 transition"
+                        className="w-full bg-darkBg-deep hover:bg-red-950/30 hover:border-red-500/40 hover:text-red-300 border border-darkBg-border text-gray-300 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition"
                     >
-                        <Icons.Lock />
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
                         <span>Ekranı Kilitle</span>
                     </button>
                 </div>
@@ -313,6 +332,10 @@ function App() {
                             settings={settings}
                             quickPlateContext={quickPlateContext}
                             setQuickPlateContext={setQuickPlateContext}
+                            pendingFromAppointment={pendingFromAppointment}
+                            setPendingFromAppointment={setPendingFromAppointment}
+                            appointments={appointments}
+                            setAppointments={setAppointments}
                             showNotification={showNotification}
                         />
                     )}
@@ -325,6 +348,7 @@ function App() {
                             setCustomers={setCustomers}
                             services={services}
                             setQuickPlateContext={setQuickPlateContext}
+                            setPendingFromAppointment={setPendingFromAppointment}
                             setActiveTab={setActiveTab}
                             showNotification={showNotification}
                         />
@@ -374,6 +398,23 @@ function App() {
                             setExpenses={setExpenses}
                             sales={sales}
                             products={products}
+                            isSensitiveHidden={isSensitiveHidden}
+                            setIsSensitiveHidden={setIsSensitiveHidden}
+                            requestPinApproval={requestPinApproval}
+                            showNotification={showNotification}
+                        />
+                    )}
+
+                    {activeTab === 'income' && (
+                        <IncomeTab
+                            transactions={transactions}
+                            setTransactions={setTransactions}
+                            sales={sales}
+                            setSales={setSales}
+                            products={products}
+                            setProducts={setProducts}
+                            customers={customers}
+                            services={services}
                             isSensitiveHidden={isSensitiveHidden}
                             setIsSensitiveHidden={setIsSensitiveHidden}
                             requestPinApproval={requestPinApproval}

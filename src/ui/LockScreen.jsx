@@ -17,10 +17,11 @@ const formatRemaining = (ms) => {
     return `${seconds} sn`;
 };
 
-export const LockScreen = ({ users, handleUnlock, pinError }) => {
+export const LockScreen = ({ users, handleUnlock, pinError, onPinReset }) => {
     const [pin, setPin] = useState('');
     const [cooldownMs, setCooldownMs] = useState(getCooldownRemainingMs());
     const [failedAttempts, setFailedAttempts] = useState(getPinLockState().failedAttempts);
+    const [showRecovery, setShowRecovery] = useState(false);
 
     // Cooldown sayacını canlı tut.
     useEffect(() => {
@@ -100,6 +101,40 @@ export const LockScreen = ({ users, handleUnlock, pinError }) => {
         if (isCoolingDown) return;
         setPin(pin.slice(0, -1));
     };
+
+    // Fiziksel klavye desteği: 0-9 ile yaz, Backspace ile sil, Escape ile temizle, Enter ile doğrula.
+    useEffect(() => {
+        const onKeyDown = (event) => {
+            if (showRecovery) return;
+            if (isCoolingDown) return;
+
+            // Modifier tuşlu kombinasyonları (Ctrl+R vb.) yakalama.
+            if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+            if (/^[0-9]$/.test(event.key)) {
+                event.preventDefault();
+                handleKeypad(event.key);
+                return;
+            }
+            if (event.key === 'Backspace') {
+                event.preventDefault();
+                handleBackspace();
+                return;
+            }
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                setPin('');
+                return;
+            }
+            if (event.key === 'Enter' && pin.length === 4) {
+                event.preventDefault();
+                handleUnlock(pin);
+                setPin('');
+            }
+        };
+        document.addEventListener('keydown', onKeyDown);
+        return () => document.removeEventListener('keydown', onKeyDown);
+    }, [pin, isCoolingDown, showRecovery, handleUnlock]);
 
     return (
         <div
@@ -194,7 +229,55 @@ export const LockScreen = ({ users, handleUnlock, pinError }) => {
                     </button>
                 </div>
                 <span className="text-xs text-gray-600">PIN ayarları Sistem & Yedekleme bölümünden yönetilir.</span>
+
+                {onPinReset && (
+                    <button
+                        type="button"
+                        onClick={() => setShowRecovery(true)}
+                        className="lock-screen-focusable mt-4 text-[11px] text-amber-300 hover:text-amber-200 underline-offset-2 hover:underline transition"
+                    >
+                        PIN'imi Unuttum
+                    </button>
+                )}
             </div>
+
+            {showRecovery && (
+                <div
+                    className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+                    role="dialog"
+                    aria-modal="true"
+                >
+                    <div className="w-full max-w-sm bg-darkBg-card border border-amber-500/40 rounded-xl p-6 shadow-2xl space-y-4 text-left">
+                        <h3 className="text-base font-extrabold text-white">PIN Kodunu Sıfırla</h3>
+                        <p className="text-xs text-gray-300 leading-relaxed">
+                            PIN kodunuz <span className="font-extrabold text-amber-300">1234</span> olarak sıfırlanacak.
+                            Müşteri, hizmet, gelir ve gider verileriniz silinmez. Giriş yaptıktan sonra
+                            <span className="text-white font-bold"> Sistem & Yedekleme </span>
+                            sekmesinden hemen yeni bir PIN belirlemenizi öneririm.
+                        </p>
+                        <div className="flex gap-3 pt-2">
+                            <button
+                                type="button"
+                                onClick={() => setShowRecovery(false)}
+                                className="lock-screen-focusable flex-1 bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold py-2.5 rounded transition"
+                            >
+                                Vazgeç
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    onPinReset();
+                                    setShowRecovery(false);
+                                    setPin('');
+                                }}
+                                className="lock-screen-focusable flex-1 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 rounded transition"
+                            >
+                                Sıfırla (1234)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

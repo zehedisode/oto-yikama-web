@@ -17,11 +17,11 @@ export const ServicesTab = ({
     const [srvName, setSrvName] = useState('');
     const [duration, setDuration] = useState(45);
     
-    const [sedanPrice, setSedanPrice] = useState(250);
-    const [suvPrice, setSuvPrice] = useState(300);
-    const [minibusPrice, setMinibusPrice] = useState(350);
-    const [ticariPrice, setTicariPrice] = useState(300);
-    const [motosikletPrice, setMotosikletPrice] = useState(150);
+    const [sedanPrice, setSedanPrice] = useState(500);
+    const [suvPrice, setSuvPrice] = useState(600);
+    const [minibusPrice, setMinibusPrice] = useState(700);
+    const [ticariPrice, setTicariPrice] = useState(640);
+    const [motosikletPrice, setMotosikletPrice] = useState(300);
 
     const handleSaveService = (e) => {
         e.preventDefault();
@@ -62,11 +62,11 @@ export const ServicesTab = ({
         setIsEditMode(false);
         setSrvName('');
         setDuration(45);
-        setSedanPrice(250);
-        setSuvPrice(300);
-        setMinibusPrice(350);
-        setTicariPrice(300);
-        setMotosikletPrice(150);
+        setSedanPrice(500);
+        setSuvPrice(600);
+        setMinibusPrice(700);
+        setTicariPrice(640);
+        setMotosikletPrice(300);
     };
 
     const openEditDialog = (srv) => {

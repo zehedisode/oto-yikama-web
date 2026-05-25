@@ -11,8 +11,13 @@ export const DB_KEYS = {
     PRODUCTS: 'otoyikama_products',
     SALES: 'otoyikama_sales',
     CAMPAIGNS: 'otoyikama_campaigns',
-    SETTINGS: 'otoyikama_settings'
+    SETTINGS: 'otoyikama_settings',
+    SEED_VERSION: 'otoyikama_seed_version'
 };
+
+// Seed sürümü her güncellendiğinde, yüklenince ilgili migration'lar çalıştırılır.
+// Bu sayede mevcut localStorage'daki eski varsayılanlar kullanıcının verisini silmeden patch'lenir.
+export const CURRENT_SEED_VERSION = 3;
 
 export const APP_STORAGE_KEYS = Object.values(DB_KEYS);
 
@@ -157,5 +162,60 @@ export const db = {
             if (db.get(DB_KEYS.EXPENSES, null) === null) db.set(DB_KEYS.EXPENSES, []);
             if (db.get(DB_KEYS.SALES, null) === null) db.set(DB_KEYS.SALES, []);
         }
+
+        // ---- Migration ----
+        // Mevcut kullanıcılarda eski varsayılanları (örn. 250₺ standart yıkama) günceller.
+        // Geçmiş işlemlerin (transactions/sales) tutarları DEĞİŞTİRİLMEZ.
+        const seedVersion = Number(db.get(DB_KEYS.SEED_VERSION, 1)) || 1;
+        if (seedVersion < 2) {
+            const currentServices = db.get(DB_KEYS.SERVICES, []);
+            // srv-1: İç & Dış Yıkama Standart fiyatları yenile (eski seed: SEDAN 250)
+            const patched = currentServices.map(srv => {
+                if (srv.id === 'srv-1' && srv.prices && srv.prices.SEDAN === 250) {
+                    return {
+                        ...srv,
+                        prices: { SEDAN: 500, SUV: 600, MINIBUS: 700, TICARI: 640, MOTOSIKLET: 300 }
+                    };
+                }
+                if (srv.id === 'srv-2' && srv.prices && srv.prices.SEDAN === 1200) {
+                    return {
+                        ...srv,
+                        prices: { SEDAN: 2400, SUV: 2800, MINIBUS: 3600, TICARI: 3000, MOTOSIKLET: 1000 }
+                    };
+                }
+                if (srv.id === 'srv-3' && srv.prices && srv.prices.SEDAN === 2500) {
+                    return {
+                        ...srv,
+                        prices: { SEDAN: 5000, SUV: 6000, MINIBUS: 7000, TICARI: 6000, MOTOSIKLET: 2400 }
+                    };
+                }
+                if (srv.id === 'srv-4' && srv.prices && srv.prices.SEDAN === 400) {
+                    return {
+                        ...srv,
+                        prices: { SEDAN: 800, SUV: 900, MINIBUS: 1000, TICARI: 1000, MOTOSIKLET: 600 }
+                    };
+                }
+                return srv;
+            });
+            db.set(DB_KEYS.SERVICES, patched);
+        }
+        if (seedVersion < 3) {
+            // Pasta Cila fiyatını makul seviyeye çek + 5 yeni hizmet kataloğa eklensin.
+            const currentServices = db.get(DB_KEYS.SERVICES, []);
+            const patched = currentServices.map(srv => {
+                if (srv.id === 'srv-3' && srv.prices && srv.prices.SEDAN === 5000) {
+                    return {
+                        ...srv,
+                        prices: { SEDAN: 2500, SUV: 3000, MINIBUS: 3500, TICARI: 3000, MOTOSIKLET: 1200 },
+                        duration: 180
+                    };
+                }
+                return srv;
+            });
+            const existingIds = new Set(patched.map(s => s.id));
+            const additions = DEFAULT_SERVICES().filter(s => !existingIds.has(s.id));
+            db.set(DB_KEYS.SERVICES, [...patched, ...additions]);
+        }
+        db.set(DB_KEYS.SEED_VERSION, CURRENT_SEED_VERSION);
     }
 };

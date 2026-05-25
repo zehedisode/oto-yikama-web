@@ -58,3 +58,31 @@ esbuild tum import'lari takip ederek tek bir `assets/js/app.js` dosyasi uretir.
 - Tekrarlanan UI parcasi `src/ui/` altina alinmalidir.
 - Veri semasi degisirse yedek JSON import/export akisi geriye uyumlu tutulmalidir.
 - Sunucusuz kullanim korunacaksa `assets/js/app.js` her kaynak degisikliginden sonra yeniden derlenmelidir.
+
+
+## Bagimlilik Grafi (madge)
+
+`madge` ile `src/` altindaki modul grafini analiz edebilirsiniz. Komutlar:
+
+```powershell
+npm run graph            # Konsola modul -> import edilenler tablosu
+npm run graph:circular   # Dairesel bagimlilik var mi?
+npm run graph:orphans    # Hicbir yerden import edilmeyen dosyalar
+npm run graph:html       # docs/dependency-graph.html (interaktif, offline)
+npm run graph:report     # JSON + ozet metin + HTML hepsini birden uretir
+```
+
+Uretilen dosyalar:
+
+- `.codegraph/dependency-graph.json` - Her modulun import ettigi dosyalarin tam haritasi.
+- `.codegraph/dependency-summary.txt` - Her modulun kac dosya tarafindan import edildigi.
+- `.codegraph/dependency-graph.html` - Tarayicida cift tiklayip acabileceginiz interaktif gorsel.
+  Dugume tikladiginizda import zinciri vurgulanir; sol kenar cubugundan modul listesi.
+
+Not: `.codegraph/` klasoru `.gitignore` icindedir. Raporlar yerel cache'tir, commit edilmez;
+her gelistirici `npm run graph:report` ile kendi makinesinde uretir.
+
+Mevcut durum:
+- Dairesel bagimlilik yok.
+- Tek "yetim" modul `app.jsx` (bundle giris noktasi - normal).
+- En cok kullanilan utility'ler: `core/icons.jsx`, `core/app-core.js`, `ui/PageHeader.jsx`.

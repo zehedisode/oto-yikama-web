@@ -4,11 +4,19 @@
   "private": true,
   "description": "Sunucusuz, localStorage tabanli oto yikama yonetim paneli.",
   "scripts": {
-    "build": "tailwindcss -c ./tailwind.config.cjs -i ./src/styles/tailwind.css -o ./assets/css/tailwind.css --minify && esbuild ./src/app.jsx --bundle --outfile=./assets/js/app.js --format=iife --target=es2018 --loader:.jsx=jsx --charset=utf8",
-    "check": "node --check ./assets/js/app.js"
+    "build": "tailwindcss -c ./tailwind.config.cjs -i ./src/styles/tailwind.css -o ./assets/css/tailwind.css --minify && esbuild ./src/app.jsx --bundle --outfile=./assets/js/app.js --format=iife --target=es2018 --loader:.jsx=jsx --charset=utf8 && npm run graph:report",
+    "build:fast": "tailwindcss -c ./tailwind.config.cjs -i ./src/styles/tailwind.css -o ./assets/css/tailwind.css --minify && esbuild ./src/app.jsx --bundle --outfile=./assets/js/app.js --format=iife --target=es2018 --loader:.jsx=jsx --charset=utf8",
+    "check": "node --check ./assets/js/app.js",
+    "graph": "madge --extensions js,jsx ./src",
+    "graph:circular": "madge --extensions js,jsx --circular ./src",
+    "graph:orphans": "madge --extensions js,jsx --orphans ./src",
+    "graph:json": "madge --extensions js,jsx --json ./src > ./.codegraph/dependency-graph.json",
+    "graph:html": "node ./scripts/build-graph-html.mjs",
+    "graph:report": "node ./scripts/run-graph-report.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.25.0",
+    "madge": "^8.0.0",
     "tailwindcss": "^3.4.17"
   }
 }

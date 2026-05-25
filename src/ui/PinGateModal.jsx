@@ -32,6 +32,15 @@ export const PinGateModal = ({ isOpen, customText, gatePin, setGatePin, onFail, 
         return () => clearInterval(interval);
     }, [isOpen, gatePin]);
 
+    // 4 hane tamamlandığında Enter beklemeden otomatik onayla.
+    useEffect(() => {
+        if (!isOpen) return undefined;
+        if (gatePin.length !== 4) return undefined;
+        if (getCooldownRemainingMs() > 0) return undefined;
+        const timer = setTimeout(() => onSubmit(), 150);
+        return () => clearTimeout(timer);
+    }, [gatePin, isOpen, onSubmit]);
+
     if (!isOpen) return null;
 
     const isCoolingDown = cooldownMs > 0;

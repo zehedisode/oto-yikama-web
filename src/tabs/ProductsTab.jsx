@@ -1,10 +1,11 @@
 const { useState } = React;
 
-import { parsePositiveNumber, parsePositiveInteger, formatCurrency } from '../core/app-core.js';
+import { parsePositiveNumber, parsePositiveInteger, formatCurrency, PAYMENT_METHODS } from '../core/app-core.js';
 import { generateUUID } from '../core/db.js';
 import { PageHeader } from '../ui/PageHeader.jsx';
 import { CustomConfirmModal } from '../ui/ConfirmModal.jsx';
 import { Icons } from '../core/icons.jsx';
+import { ReceiptPrint } from '../ui/ReceiptPrint.jsx';
 
 export const ProductsTab = ({ 
     products, 
@@ -16,6 +17,7 @@ export const ProductsTab = ({
 }) => {
     const [isOpenProdModal, setIsOpenProdModal] = useState(false);
     const [isOpenSaleModal, setIsOpenSaleModal] = useState(false);
+    const [editProductId, setEditProductId] = useState('');
     
     const [prodName, setProdName] = useState('');
     const [prodCategory, setProdCategory] = useState('Hızlı Satış');
@@ -27,29 +29,68 @@ export const ProductsTab = ({
     const [selectedProdId, setSelectedProdId] = useState('');
     const [selectedCustId, setSelectedCustId] = useState('');
     const [saleQty, setSaleQty] = useState(1);
+    const [salePaymentMethod, setSalePaymentMethod] = useState('cash');
+    const [productReceipt, setProductReceipt] = useState(null);
     const [deleteSaleConfirm, setDeleteSaleConfirm] = useState({ isOpen: false, targetId: null });
+
+    const resetProductForm = () => {
+        setEditProductId('');
+        setProdName('');
+        setProdCategory('Hızlı Satış');
+        setProdPrice(100);
+        setProdCost(40);
+        setProdStock(10);
+        setProdUnit('Adet');
+    };
+
+    const openNewProduct = () => {
+        resetProductForm();
+        setIsOpenProdModal(true);
+    };
+
+    const openEditProduct = (p) => {
+        setEditProductId(p.id);
+        setProdName(p.name || '');
+        setProdCategory(p.category || 'Hızlı Satış');
+        setProdPrice(p.price);
+        setProdCost(p.cost);
+        setProdStock(p.stock);
+        setProdUnit(p.unit || 'Adet');
+        setIsOpenProdModal(true);
+    };
 
     const handleAddProduct = (e) => {
         e.preventDefault();
         if (!prodName) return;
 
-        const newProd = {
-            id: generateUUID(),
-            name: prodName,
-            category: prodCategory,
-            price: parsePositiveNumber(prodPrice),
-            cost: parsePositiveNumber(prodCost),
-            stock: parsePositiveInteger(prodStock),
-            unit: prodUnit,
-            isActive: true
-        };
+        if (editProductId) {
+            setProducts(prev => prev.map(p => p.id === editProductId ? {
+                ...p,
+                name: prodName,
+                category: prodCategory,
+                price: parsePositiveNumber(prodPrice),
+                cost: parsePositiveNumber(prodCost),
+                stock: parsePositiveInteger(prodStock),
+                unit: prodUnit
+            } : p));
+            showNotification("Ürün bilgileri güncellendi.");
+        } else {
+            const newProd = {
+                id: generateUUID(),
+                name: prodName,
+                category: prodCategory,
+                price: parsePositiveNumber(prodPrice),
+                cost: parsePositiveNumber(prodCost),
+                stock: parsePositiveInteger(prodStock),
+                unit: prodUnit,
+                isActive: true
+            };
+            setProducts(prev => [...prev, newProd]);
+            showNotification("Yeni ürün stoğa eklendi.");
+        }
 
-        setProducts(prev => [...prev, newProd]);
-        showNotification("Yeni ürün stoğa eklendi.");
         setIsOpenProdModal(false);
-
-        setProdName('');
-        setProdStock(10);
+        resetProductForm();
     };
 
     const handleDirectSale = (e) => {
@@ -68,22 +109,46 @@ export const ProductsTab = ({
 
         setProducts(prev => prev.map(p => p.id === selectedProdId ? { ...p, stock: p.stock - quantity } : p));
 
+        const customerSnapshot = selectedCustId
+            ? (() => {
+                const c = customers.find(x => x.id === selectedCustId);
+                return c ? { plate: c.plate, name: c.name, phone: c.phone, vehicleType: c.vehicleType } : null;
+            })()
+            : null;
+
         const newSale = {
             id: generateUUID(),
             productId: selectedProdId,
+            productSnapshot: { name: product.name, unit: product.unit },
             customerId: selectedCustId || 'CARI_MUSTERI',
+            customerSnapshot,
             quantity,
             unitPrice: product.price,
             totalPrice: product.price * quantity,
+            paymentMethod: salePaymentMethod,
             date: new Date().toISOString()
         };
 
         setSales(prev => [newSale, ...prev]);
         showNotification("Aksesuar/ürün satışı tamamlandı!");
+
+        // Fiş hazırla
+        setProductReceipt({
+            date: newSale.date,
+            customer: customerSnapshot,
+            lines: [{ label: `${product.name} × ${quantity}`, amount: newSale.totalPrice }],
+            subTotal: newSale.totalPrice,
+            discount: 0,
+            total: newSale.totalPrice,
+            paymentMethod: salePaymentMethod,
+            note: ''
+        });
+
         setIsOpenSaleModal(false);
         setSelectedProdId('');
         setSelectedCustId('');
         setSaleQty(1);
+        setSalePaymentMethod('cash');
     };
 
     const confirmDeleteProductSale = () => {
@@ -127,7 +192,7 @@ export const ProductsTab = ({
                     </button>
                     <button
                         type="button"
-                        onClick={() => setIsOpenProdModal(true)}
+                        onClick={openNewProduct}
                         className="px-4 py-2 bg-brand-600 hover:bg-brand-500 rounded-lg text-sm font-semibold text-white flex items-center space-x-2 transition"
                     >
                         <Icons.Plus />
@@ -149,12 +214,13 @@ export const ProductsTab = ({
                                 <th className="p-4 text-center">Mevcut Stok</th>
                                 <th className="p-4">Birim</th>
                                 <th className="p-4">Durum</th>
+                                <th className="p-4 text-center">İşlem</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-darkBg-border">
                             {products.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="p-8 text-center text-gray-500">Stokta kayıtlı ürün bulunmuyor.</td>
+                                    <td colSpan={8} className="p-8 text-center text-gray-500">Stokta kayıtlı ürün bulunmuyor.</td>
                                 </tr>
                             ) : (
                                 products.map(p => (
@@ -171,6 +237,15 @@ export const ProductsTab = ({
                                         <td className="p-4">{p.unit}</td>
                                         <td className="p-4">
                                             <span className={`w-2 h-2 rounded-full inline-block ${p.stock > 0 ? 'bg-emerald-400' : 'bg-red-500'}`} />
+                                        </td>
+                                        <td className="p-4 text-center">
+                                            <button
+                                                type="button"
+                                                onClick={() => openEditProduct(p)}
+                                                className="text-brand-400 hover:text-brand-300 text-[10px] font-bold underline-offset-2 hover:underline transition"
+                                            >
+                                                Düzenle
+                                            </button>
                                         </td>
                                     </tr>
                                 ))
@@ -219,7 +294,7 @@ export const ProductsTab = ({
             {isOpenProdModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4">
                     <div className="w-full max-w-sm bg-darkBg-card border border-darkBg-border rounded-xl p-6 shadow-2xl space-y-4 text-xs">
-                        <h3 className="text-base font-bold text-white">Yeni Ürün / Stok Kartı Oluştur</h3>
+                        <h3 className="text-base font-bold text-white">{editProductId ? 'Ürün / Stok Kartını Düzenle' : 'Yeni Ürün / Stok Kartı Oluştur'}</h3>
                         
                         <form onSubmit={handleAddProduct} className="space-y-3">
                             <div className="space-y-1">
@@ -252,8 +327,8 @@ export const ProductsTab = ({
                             </div>
 
                             <div className="flex space-x-3 pt-2">
-                                <button type="button" onClick={() => setIsOpenProdModal(false)} className="flex-1 bg-gray-800 p-2.5 rounded font-bold">Vazgeç</button>
-                                <button type="submit" className="flex-1 bg-brand-600 p-2.5 rounded font-bold">Kaydet</button>
+                                <button type="button" onClick={() => { setIsOpenProdModal(false); resetProductForm(); }} className="flex-1 bg-gray-800 p-2.5 rounded font-bold">Vazgeç</button>
+                                <button type="submit" className="flex-1 bg-brand-600 p-2.5 rounded font-bold">{editProductId ? 'Güncelle' : 'Kaydet'}</button>
                             </div>
                         </form>
                     </div>
@@ -309,6 +384,27 @@ export const ProductsTab = ({
                                 />
                             </div>
 
+                            <div className="space-y-1">
+                                <label className="text-gray-400 block font-semibold">Ödeme Yöntemi</label>
+                                <div className="grid grid-cols-2 gap-1.5">
+                                    {PAYMENT_METHODS.map(p => (
+                                        <button
+                                            key={p.id}
+                                            type="button"
+                                            onClick={() => setSalePaymentMethod(p.id)}
+                                            className={`px-2 py-2 rounded-lg text-[11px] font-bold border transition flex items-center justify-center gap-1 ${
+                                                salePaymentMethod === p.id
+                                                    ? 'bg-brand-600 border-brand-500 text-white'
+                                                    : 'bg-darkBg-deep border-darkBg-border text-gray-400 hover:text-white'
+                                            }`}
+                                        >
+                                            <span>{p.icon}</span>
+                                            <span>{p.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
                             <div className="flex space-x-3 pt-2">
                                 <button type="button" onClick={() => setIsOpenSaleModal(false)} className="flex-1 bg-gray-800 p-2.5 rounded font-bold">Vazgeç</button>
                                 <button type="submit" className="flex-1 bg-emerald-600 p-2.5 rounded font-bold">Ödemeyi Al</button>
@@ -317,6 +413,12 @@ export const ProductsTab = ({
                     </div>
                 </div>
             )}
+
+            <ReceiptPrint
+                isOpen={!!productReceipt}
+                data={productReceipt}
+                onClose={() => setProductReceipt(null)}
+            />
         </div>
     );
 };

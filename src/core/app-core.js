@@ -12,6 +12,15 @@ export const VEHICLE_TYPES = Object.freeze([
     { id: 'MOTOSIKLET', label: 'Motosiklet' }
 ]);
 
+export const PAYMENT_METHODS = Object.freeze([
+    { id: 'cash', label: 'Nakit', icon: '💵' },
+    { id: 'card', label: 'Kart', icon: '💳' },
+    { id: 'transfer', label: 'Havale / EFT', icon: '🏦' },
+    { id: 'unpaid', label: 'Açık Hesap', icon: '⏳' }
+]);
+
+export const getPaymentLabel = (id) => PAYMENT_METHODS.find(p => p.id === id)?.label || 'Nakit';
+
 export const APPOINTMENT_STATUS = Object.freeze({
     PENDING: 'BEKLEYOR',
     COMPLETED: 'TAMAMLANDI',

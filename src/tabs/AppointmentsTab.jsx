@@ -12,6 +12,7 @@ export const AppointmentsTab = ({
     setCustomers, 
     services, 
     setQuickPlateContext, 
+    setPendingFromAppointment,
     setActiveTab, 
     showNotification 
 }) => {
@@ -78,8 +79,14 @@ export const AppointmentsTab = ({
         const cust = customers.find(c => c.id === app.customerId);
         if (cust) {
             setQuickPlateContext(cust.plate);
-            // Randevu durumunu hemen değiştirmiyoruz; satış tamamlandığında manuel olarak
-            // "Tamamlandı" işaretlenebilir. Bu sayede satış iptal edilirse randevu kuyrukta kalır.
+            // Randevudaki seçili hizmetleri Sales'e taşı; satış tamamlanırsa randevuyu Tamamlandı'ya geçirmek için id'yi de ilet.
+            if (typeof setPendingFromAppointment === 'function') {
+                setPendingFromAppointment({
+                    appointmentId: app.id,
+                    serviceIds: Array.isArray(app.serviceIds) ? app.serviceIds : [],
+                    notes: app.notes || ''
+                });
+            }
             setActiveTab('sales');
         }
     };
