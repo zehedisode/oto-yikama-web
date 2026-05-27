@@ -372,12 +372,25 @@ function App() {
             <NotificationBadge notification={notification} />
 
             {/* SIDEBAR FOR DESKTOP VIEW */}
-            <aside className="hidden md:flex flex-col w-64 bg-darkBg-card border-r border-darkBg-border flex-shrink-0 h-screen sticky top-0 overflow-hidden">
-                <div className="p-5 pb-3 shrink-0">
-                    <AppLogo />
+            <aside className="hidden md:flex flex-col w-64 bg-darkBg-card/80 backdrop-blur-sm border-r border-darkBg-border flex-shrink-0 h-screen sticky top-0 overflow-hidden">
+                {/* Top brand surface with subtle bloom */}
+                <div className="relative p-5 pb-4 shrink-0 border-b border-darkBg-border">
+                    <span
+                        className="absolute -top-10 -left-10 w-40 h-40 rounded-full bg-brand-500/15 blur-3xl pointer-events-none"
+                        aria-hidden="true"
+                    />
+                    <div className="relative">
+                        <AppLogo />
+                    </div>
                 </div>
 
-                <nav className="flex-1 overflow-y-auto px-5 space-y-1 text-xs">
+                <div className="px-5 pt-4 pb-2 shrink-0">
+                    <span className="block text-[10px] font-extrabold tracking-[0.22em] uppercase text-gray-500">
+                        Modüller
+                    </span>
+                </div>
+
+                <nav className="flex-1 overflow-y-auto px-3 pb-3 space-y-1 text-xs">
                     {NAV_ITEMS.map(item => (
                         <NavButton
                             key={item.id}
@@ -388,18 +401,23 @@ function App() {
                     ))}
                 </nav>
 
-                <div className="p-5 pt-4 border-t border-darkBg-border space-y-3 shrink-0">
-                    <div className="bg-darkBg-deep border border-darkBg-border rounded-lg px-3 py-2.5 flex items-center justify-between">
-                        <div className="flex items-center gap-2 min-w-0">
-                            <span className="w-7 h-7 rounded-full bg-brand-600/20 border border-brand-500/40 flex items-center justify-center text-brand-300 text-[10px] font-extrabold shrink-0">
+                <div className="p-4 pt-3 border-t border-darkBg-border space-y-3 shrink-0">
+                    <div className="relative overflow-hidden bg-darkBg-deep border border-darkBg-border rounded-lg px-3 py-2.5 flex items-center justify-between">
+                        <span
+                            className="absolute -top-8 -right-8 w-20 h-20 rounded-full bg-brand-500/15 blur-2xl pointer-events-none"
+                            aria-hidden="true"
+                        />
+                        <div className="relative flex items-center gap-2 min-w-0">
+                            <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-400 to-brand-700 flex items-center justify-center text-white text-[11px] font-extrabold shrink-0 ring-1 ring-brand-300/30 shadow-[0_8px_18px_-8px_rgba(6,182,212,0.7)]">
                                 A
                             </span>
                             <div className="min-w-0">
-                                <span className="block text-[10px] text-gray-500 leading-tight">Oturum</span>
-                                <span className="block text-xs font-bold text-gray-200 truncate">Admin</span>
+                                <span className="block text-[9px] text-gray-500 leading-tight uppercase tracking-[0.18em] font-bold">Oturum</span>
+                                <span className="block text-xs font-bold text-gray-100 truncate">Admin</span>
                             </div>
                         </div>
-                        <span className="text-[9px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider shrink-0">
+                        <span className="relative inline-flex items-center gap-1 text-[9px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider shrink-0">
+                            <span className="w-1 h-1 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(16,185,129,0.7)]" />
                             Lokal
                         </span>
                     </div>
@@ -409,24 +427,25 @@ function App() {
                             setIsLocked(true);
                             showNotification("Panel kilitlendi.", "warning");
                         }}
-                        className="w-full bg-darkBg-deep hover:bg-red-950/30 hover:border-red-500/40 hover:text-red-300 border border-darkBg-border text-gray-300 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition"
+                        className="w-full bg-darkBg-deep hover:bg-rose-950/30 hover:border-rose-500/40 hover:text-rose-200 border border-darkBg-border text-gray-300 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition group"
                     >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-4 h-4 transition group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>
-                        <span>Ekranı Kilitle</span>
+                        <span className="tracking-wide">Ekranı Kilitle</span>
                     </button>
                 </div>
             </aside>
 
             {/* MOBILE NAVIGATION BAR */}
-            <header className="md:hidden sticky top-0 bg-darkBg-card/95 backdrop-blur border-b border-darkBg-border p-4 flex justify-between items-center z-20">
+            <header className="md:hidden sticky top-0 bg-darkBg-card/90 backdrop-blur-md border-b border-darkBg-border p-4 flex justify-between items-center z-20">
                 <AppLogo compact />
-                <button 
+                <button
                     type="button"
                     onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                    className="p-2 bg-darkBg-deep rounded text-gray-400 hover:text-white border border-darkBg-border"
+                    className="p-2 bg-darkBg-deep rounded-lg text-gray-300 hover:text-brand-200 hover:border-brand-500/40 border border-darkBg-border transition"
                     aria-label="Menüyü aç/kapat"
+                    aria-expanded={mobileMenuOpen}
                 >
                     <Icons.Menu />
                 </button>
@@ -434,7 +453,7 @@ function App() {
 
             {/* MOBILE MENU DROPDOWN */}
             {mobileMenuOpen && (
-                <div className="md:hidden bg-darkBg-card border-b border-darkBg-border text-xs flex flex-col p-4 space-y-2 z-20">
+                <div className="md:hidden bg-darkBg-card/95 backdrop-blur border-b border-darkBg-border text-xs flex flex-col p-4 space-y-2 z-20">
                     {NAV_ITEMS.map(item => (
                         <NavButton
                             key={item.id}
@@ -454,7 +473,7 @@ function App() {
                             setIsLocked(true);
                             setMobileMenuOpen(false);
                         }}
-                        className="w-full py-2 bg-red-950/30 text-red-400 border border-red-900/30 rounded font-bold text-center"
+                        className="w-full py-2.5 bg-rose-950/30 text-rose-200 border border-rose-500/30 rounded-lg font-bold text-center hover:bg-rose-950/50 transition"
                     >
                         Ekranı Kilitle (PIN)
                     </button>

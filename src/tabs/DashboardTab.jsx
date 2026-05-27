@@ -149,53 +149,57 @@ export const DashboardTab = ({
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
-                <div className="bg-darkBg-card border border-darkBg-border p-5 rounded-xl flex items-center justify-between shadow">
-                    <div>
-                        <span className="text-xs text-gray-400 font-semibold block">Toplam Brüt Ciro</span>
-                        <span className={`text-2xl font-extrabold tracking-tight transition duration-200 ${isSensitiveHidden ? 'blur-md select-none' : 'text-emerald-400'}`}>
+                <div className="surface-card kpi-card p-5 rounded-xl flex items-center justify-between">
+                    <div className="relative">
+                        <span className="text-[10px] text-gray-500 font-extrabold uppercase tracking-[0.18em] block mb-1">Toplam Brüt Ciro</span>
+                        <span className={`kpi-value text-[26px] block transition duration-200 ${isSensitiveHidden ? 'blur-md select-none' : 'text-emerald-300'}`}>
                             {formatCurrency(totalGrossRevenue)}
                         </span>
                     </div>
-                    <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-lg">
+                    <div className="relative p-3 bg-emerald-500/10 text-emerald-300 rounded-lg ring-1 ring-emerald-500/30 shadow-[0_10px_24px_-12px_rgba(16,185,129,0.55)]">
                         <Icons.Coins />
                     </div>
                 </div>
 
-                <div className="bg-darkBg-card border border-darkBg-border p-5 rounded-xl flex items-center justify-between shadow">
-                    <div>
-                        <span className="text-xs text-gray-400 font-semibold block">Net Kâr / Zarar</span>
-                        <span className={`text-2xl font-extrabold tracking-tight transition duration-200 ${isSensitiveHidden ? 'blur-md select-none' : netProfit >= 0 ? 'text-brand-400' : 'text-red-400'}`}>
+                <div className="surface-card kpi-card p-5 rounded-xl flex items-center justify-between">
+                    <div className="relative">
+                        <span className="text-[10px] text-gray-500 font-extrabold uppercase tracking-[0.18em] block mb-1">Net Kâr / Zarar</span>
+                        <span className={`kpi-value text-[26px] block transition duration-200 ${isSensitiveHidden ? 'blur-md select-none' : netProfit >= 0 ? 'text-brand-300' : 'text-rose-300'}`}>
                             {formatCurrency(netProfit)}
                         </span>
                     </div>
-                    <div className="p-3 bg-brand-500/10 text-brand-400 rounded-lg">
+                    <div className="relative p-3 bg-brand-500/10 text-brand-300 rounded-lg ring-1 ring-brand-500/30 shadow-[0_10px_24px_-12px_rgba(6,182,212,0.55)]">
                         <Icons.Car />
                     </div>
                 </div>
 
-                <div className="bg-darkBg-card border border-darkBg-border p-5 rounded-xl flex items-center justify-between shadow">
-                    <div>
-                        <span className="text-xs text-gray-400 font-semibold block">Kayıtlı Giderler</span>
-                        <span className={`text-2xl font-extrabold tracking-tight transition duration-200 ${isSensitiveHidden ? 'blur-md select-none' : 'text-red-400'}`}>
+                <div className="surface-card kpi-card p-5 rounded-xl flex items-center justify-between">
+                    <div className="relative">
+                        <span className="text-[10px] text-gray-500 font-extrabold uppercase tracking-[0.18em] block mb-1">Kayıtlı Giderler</span>
+                        <span className={`kpi-value text-[26px] block transition duration-200 ${isSensitiveHidden ? 'blur-md select-none' : 'text-rose-300'}`}>
                             {formatCurrency(totalExpenses)}
                         </span>
                     </div>
-                    <div className="p-3 bg-red-500/10 text-red-400 rounded-lg">
+                    <div className="relative p-3 bg-rose-500/10 text-rose-300 rounded-lg ring-1 ring-rose-500/30 shadow-[0_10px_24px_-12px_rgba(244,63,94,0.45)]">
                         <Icons.Wallet />
                     </div>
                 </div>
 
-                <div className="bg-darkBg-card border border-darkBg-border p-5 rounded-xl flex items-center justify-between shadow cursor-pointer" onClick={() => setActiveTab('appointments')}>
-                    <div>
-                        <span className="text-xs text-gray-400 font-semibold block">Bekleyen Randevular</span>
-                        <span className="text-2xl font-extrabold tracking-tight text-amber-400">
-                            {activeAppointments} Adet
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('appointments')}
+                    className="surface-card kpi-card p-5 rounded-xl flex items-center justify-between text-left hover:border-amber-500/40 transition"
+                >
+                    <div className="relative">
+                        <span className="text-[10px] text-gray-500 font-extrabold uppercase tracking-[0.18em] block mb-1">Bekleyen Randevular</span>
+                        <span className="kpi-value text-[26px] block text-amber-300">
+                            {activeAppointments} <span className="text-sm text-amber-200/70 font-bold">adet</span>
                         </span>
                     </div>
-                    <div className="p-3 bg-amber-500/10 text-amber-400 rounded-lg">
+                    <div className="relative p-3 bg-amber-500/10 text-amber-300 rounded-lg ring-1 ring-amber-500/30 shadow-[0_10px_24px_-12px_rgba(245,158,11,0.5)]">
                         <Icons.Calendar />
                     </div>
-                </div>
+                </button>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -265,15 +269,15 @@ export const DashboardTab = ({
                                 title="Hizmet girişine git"
                             >
                                 <div className="flex items-center justify-between">
-                                    <span className="text-xs font-extrabold text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded uppercase tracking-wider">{customer.plate}</span>
-                                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-extrabold px-2 py-0.5 rounded-full">
+                                    <span className="plate-chip">{customer.plate}</span>
+                                    <span className="text-[10px] bg-emerald-500/15 text-emerald-200 font-extrabold px-2 py-0.5 rounded-full ring-1 ring-emerald-500/30">
                                         {stats.availableRewards}× bedava
                                     </span>
                                 </div>
                                 <p className="text-sm font-bold text-white mt-2 truncate">{customer.name}</p>
-                                <p className="text-[10px] text-gray-400 truncate">{customer.phone}</p>
-                                <p className="text-[10px] text-emerald-400 font-semibold mt-2">
-                                    {stats.paidVisits} ücretli yıkama tamamlandı
+                                <p className="text-[10px] text-gray-400 truncate font-mono-num">{customer.phone}</p>
+                                <p className="text-[10px] text-emerald-300 font-semibold mt-2">
+                                    <span className="font-mono-num font-extrabold">{stats.paidVisits}</span> ücretli yıkama tamamlandı
                                 </p>
                             </button>
                         ))}
@@ -299,7 +303,7 @@ export const DashboardTab = ({
                                     handleQuickSaleRedirect(quickPlate);
                                 }
                             }}
-                            className="w-full bg-darkBg-deep border border-darkBg-border p-3 rounded-lg text-center uppercase tracking-wider font-bold text-lg focus:outline-none focus:border-brand-500 text-white"
+                            className="w-full bg-darkBg-deep border border-darkBg-border p-3 rounded-lg text-center uppercase font-mono-num font-bold text-xl tracking-[0.18em] focus:outline-none focus:border-brand-500 text-brand-200 placeholder:text-gray-600"
                         />
                         <button 
                             type="button"
@@ -309,9 +313,9 @@ export const DashboardTab = ({
                                     handleQuickSaleRedirect(val);
                                 }
                             }}
-                            className="w-full bg-brand-600 hover:bg-brand-500 text-white font-semibold py-3 rounded-lg text-sm transition"
+                            className="w-full bg-brand-600 hover:bg-brand-500 text-white font-bold py-3 rounded-lg text-sm transition shadow-[0_10px_24px_-12px_rgba(6,182,212,0.7)]"
                         >
-                            Sorgula & İşlem Başlat
+                            Sorgula &amp; İşlem Başlat
                         </button>
                     </div>
                 </div>
@@ -327,12 +331,12 @@ export const DashboardTab = ({
                                 return (
                                     <div key={tr.id} className="py-3 flex justify-between items-center text-xs">
                                         <div>
-                                            <span className="font-extrabold text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded-md mr-2">{cust?.plate || 'BELİRSİZ'}</span>
-                                            <span className="text-gray-300 font-medium">{cust?.name || 'Misafir'}</span>
-                                            <span className="text-gray-500 block text-[10px]">{new Date(tr.date).toLocaleString('tr-TR')}</span>
+                                            <span className="plate-chip mr-2">{cust?.plate || 'BELİRSİZ'}</span>
+                                            <span className="text-gray-200 font-medium">{cust?.name || 'Misafir'}</span>
+                                            <span className="text-gray-500 block text-[10px] mt-0.5 font-mono-num">{new Date(tr.date).toLocaleString('tr-TR')}</span>
                                         </div>
                                         <div className="text-right">
-                                            <span className={`font-bold block ${isSensitiveHidden ? 'blur-sm select-none' : 'text-emerald-400'}`}>
+                                            <span className={`font-mono-num font-bold block ${isSensitiveHidden ? 'blur-sm select-none' : 'text-emerald-300'}`}>
                                                 {formatCurrency(tr.totalPrice)}
                                             </span>
                                             <span className="text-[10px] text-gray-400">

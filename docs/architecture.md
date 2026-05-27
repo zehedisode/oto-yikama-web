@@ -86,3 +86,79 @@ Mevcut durum:
 - Dairesel bagimlilik yok.
 - Tek "yetim" modul `app.jsx` (bundle giris noktasi - normal).
 - En cok kullanilan utility'ler: `core/icons.jsx`, `core/app-core.js`, `ui/PageHeader.jsx`.
+
+## Tasarim Sistemi
+
+Tasarim yonu: **refined automotive operations console**. Endustriyel ama lukstur;
+gece servisi atmosferi, soft brand-bloom ve parlatilmis hairline kenarlar.
+Ozellikle plaka, tutar ve PIN gibi sayisal alanlar mono ile vurgulanir.
+
+### Tipografi
+
+| Rol            | Font                                     | Kullanim                           |
+| -------------- | ---------------------------------------- | ---------------------------------- |
+| Display        | `Bricolage Grotesque` (500..800)         | `<h1>`, `<h2>`, `<h3>`, KPI degerleri |
+| Body           | `Plus Jakarta Sans` (300..800)           | `<body>` ve metinler               |
+| Mono / Numerik | `JetBrains Mono` (500..700)              | Plaka, tutar, PIN, telefon, tarih  |
+
+Yardimci siniflar:
+
+- `.font-mono-num` -> mono numerik (tabular-num + lining figures).
+- `.kpi-value` -> Bricolage agirligi + tabular-num + sikilastirilmis tracking.
+- `.plate-chip` -> Markaya uygun plaka rozeti (ic gradyan + brand cerceve).
+- `.surface-card` -> Hairline ust highlight + yumusak govde golgesi.
+- `.kpi-card` -> Sag-ust kosede yumusak brand bloom (radial-gradient pseudo).
+- `.modal-backdrop` -> Cam gibi blur + saturate edilmis modal arka plani.
+
+### Renkler
+
+Tailwind tema tokenlari `tailwind.config.cjs` icinde sabittir. Onemli olanlar:
+
+- `brand.50..950` -> Cyan ailesi (ana marka). 400-500 vurgu, 600 buton.
+- `darkBg.deep`   -> `#0a0f14` (en derin yuzey, body backdrop).
+- `darkBg.card`   -> `#101820` (kart yuzeyi, sheen ile katmanli).
+- `darkBg.border` -> `#1f2a33` (hairline cerceve).
+- `darkBg.hover`  -> `#172430` (hover yuzeyi).
+- `accent.amber`  -> uyari, `accent.emerald` -> gelir, `accent.rose` -> gider.
+
+### Atmosfer
+
+`assets/css/styles.css` body uzerinde sabit (fixed) bir katmanli arka plan kurar:
+
+1. Sol-ust kose: `radial-gradient` ile 10% opasiteli cyan bulutsu.
+2. Sag-alt kose: 6% opasiteli emerald karsi-bulutsu.
+3. Tum yuzey: 32px x 32px ince muhendislik gridi (~2% beyaz).
+
+`prefers-reduced-motion` etkinse tum animasyonlar 0.01ms'e dusurulur.
+
+### Bilesen Notlari
+
+- `AppLogo` -> Gradyan badge + sheen + brand glow. Wordmark display fontunda.
+- `NavButton` -> Sol "rail" gostergesi + brand glow nokta. Aktif durum
+  gradyan ile vurgulanir, hover hairline gosterir.
+- `PageHeader` -> Display baslik + brand kicker etiketi + 56px alt vurgu cizgisi.
+- `NotificationBadge` -> Sol renk rayi + ikon nisi + uppercase rol etiketi.
+- `ConfirmModal`, `PinGateModal` -> Sol renk rayi (amber/brand) + cam backdrop.
+- `LockScreen` -> Tum ekran modal-backdrop + dekoratif grid + sayisal tuslar
+  mono font ile. Klavye kisayollari (0-9, Backspace, Esc, Enter) korunur.
+- `FinanceChart` -> Coklu durakli gradyan barlar + zemin yatay grid.
+  Hassas mod aktifken yukseklikler esitlenir; tutarlar `font-mono-num` + blur ile gizlenir.
+- `DashboardTab` KPI tile'lari `kpi-card` + `kpi-value` ile yenilendi.
+
+### Erisilebilirlik
+
+- `:focus-visible` brand renginde 2px outline + 4px halka (`box-shadow`).
+- Tum modallarda `role="dialog"` ve `aria-modal="true"` korundu.
+- Lock ekrani arka plan icerikten focus kacisini engelleyen tab-trap'a sahiptir.
+- Renk kontrastlari: brand-300 / emerald-300 / rose-300 / amber-300 koyu zemin
+  uzerinde WCAG AA gereksinimini karsilar; hassas tutarlar blur + select-none
+  ile bilgisel olarak da maskelenir.
+
+### Yeni Ekran Eklerken
+
+1. `tabs/` altinda tab dosyasini olustur, ust kismini `<PageHeader />` ile cer.
+2. KPI tile'lari icin `surface-card kpi-card` + `kpi-value` siniflarini kullan.
+3. Plaka gosteriminde `<span className="plate-chip">{plate}</span>`.
+4. Tutar / sayisal alanlarda `font-mono-num` veya `kpi-value` siniflari.
+5. Tema tokenlari (`brand-*`, `darkBg-*`) disinda renk hardcode etme.
+
