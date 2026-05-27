@@ -25,9 +25,47 @@
 
     <script src="./assets/js/app.js"></script>
     <script>
+      // Service Worker kaydi + otomatik guncelleme.
+      // - Sayfa her acilista SW'yi update'a zorlar.
+      // - Yeni surum bulunursa kullanici reload bekleyince devraliyoruz.
+      // - controllerchange tetiklendiginde sayfayi bir kez otomatik yeniler.
       if ('serviceWorker' in navigator) {
+        let isReloading = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (isReloading) return;
+          isReloading = true;
+          window.location.reload();
+        });
+
         window.addEventListener('load', function () {
-          navigator.serviceWorker.register('./service-worker.js').catch(function () { /* offline cache opsiyonel, hata sessizce yutulur */ });
+          navigator.serviceWorker.register('./service-worker.js')
+            .then((registration) => {
+              try { registration.update(); } catch (_) { /* yoksay */ }
+
+              const promote = (worker) => {
+                if (!worker) return;
+                worker.addEventListener('statechange', () => {
+                  if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // Yeni surum hazir, hemen devral.
+                    worker.postMessage({ type: 'SKIP_WAITING' });
+                  }
+                });
+              };
+
+              if (registration.waiting && navigator.serviceWorker.controller) {
+                registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+              }
+              promote(registration.installing);
+              registration.addEventListener('updatefound', () => promote(registration.installing));
+
+              // Sekme tekrar gorunur olursa SW'yi tekrar update'le.
+              document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                  registration.update().catch(() => undefined);
+                }
+              });
+            })
+            .catch(function () { /* offline cache opsiyonel, hata sessizce yutulur */ });
         });
       }
     </script>

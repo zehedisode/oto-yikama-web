@@ -5,7 +5,7 @@
  *   - Yeni sürüm yayınlandığında CACHE_VERSION artırılarak eski cache temizlenir.
  */
 
-const CACHE_VERSION = 'zehedisode-de2bb3371b';
+const CACHE_VERSION = 'zehedisode-7b916fc8c0';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -37,6 +37,13 @@ self.addEventListener('activate', (event) => {
     );
 });
 
+// Sayfa "yeni surumu hemen devral" mesaji gonderirse waiting'den activated'a gec.
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
+});
+
 self.addEventListener('fetch', (event) => {
     const request = event.request;
     if (request.method !== 'GET') return;
@@ -45,6 +52,17 @@ self.addEventListener('fetch', (event) => {
     const isHTML = request.mode === 'navigate' || (request.headers.get('accept') || '').includes('text/html');
 
     if (isHTML) {
+        event.respondWith(networkFirst(request));
+        return;
+    }
+
+    // Bundle ve service worker'in kendisi: agresif network-first.
+    // Boylece yeni deploy edildiginde kullanici eski paketi gormez.
+    if (url.origin === self.location.origin && (
+        url.pathname.endsWith('/assets/js/app.js') ||
+        url.pathname.endsWith('/assets/css/tailwind.css') ||
+        url.pathname.endsWith('/service-worker.js')
+    )) {
         event.respondWith(networkFirst(request));
         return;
     }
