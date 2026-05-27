@@ -4,8 +4,9 @@
   "private": true,
   "description": "Sunucusuz, localStorage tabanli oto yikama yonetim paneli.",
   "scripts": {
-    "build": "tailwindcss -c ./tailwind.config.cjs -i ./src/styles/tailwind.css -o ./assets/css/tailwind.css --minify && esbuild ./src/app.jsx --bundle --minify --outfile=./assets/js/app.js --format=iife --target=es2018 --loader:.jsx=jsx --charset=utf8 && npm run graph:report",
-    "build:fast": "tailwindcss -c ./tailwind.config.cjs -i ./src/styles/tailwind.css -o ./assets/css/tailwind.css --minify && esbuild ./src/app.jsx --bundle --minify --outfile=./assets/js/app.js --format=iife --target=es2018 --loader:.jsx=jsx --charset=utf8",
+    "build": "tailwindcss -c ./tailwind.config.cjs -i ./src/styles/tailwind.css -o ./assets/css/tailwind.css --minify && esbuild ./src/app.jsx --bundle --minify --outfile=./assets/js/app.js --format=iife --target=es2018 --loader:.jsx=jsx --charset=utf8 && npm run sw:stamp && npm run graph:report",
+    "build:fast": "tailwindcss -c ./tailwind.config.cjs -i ./src/styles/tailwind.css -o ./assets/css/tailwind.css --minify && esbuild ./src/app.jsx --bundle --minify --outfile=./assets/js/app.js --format=iife --target=es2018 --loader:.jsx=jsx --charset=utf8 && npm run sw:stamp",
+    "sw:stamp": "node ./scripts/stamp-sw.mjs",
     "check": "node --check ./assets/js/app.js",
     "graph": "madge --extensions js,jsx ./src",
     "graph:circular": "madge --extensions js,jsx --circular ./src",
