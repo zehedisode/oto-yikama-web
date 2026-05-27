@@ -1,89 +1,107 @@
-const { useState } = React;
+const { useState, useMemo } = React;
 
 import { parsePositiveNumber, formatCurrency } from '../core/app-core.js';
 import { generateUUID } from '../core/db.js';
 import { PageHeader } from '../ui/PageHeader.jsx';
+import { Modal } from '../ui/Modal.jsx';
+import { StatTile } from '../ui/StatTile.jsx';
 import { CustomConfirmModal } from '../ui/ConfirmModal.jsx';
 import { Icons } from '../core/icons.jsx';
 
-export const FinanceTab = ({ 
-    transactions, 
-    expenses, 
-    setExpenses, 
-    sales, 
-    isSensitiveHidden, 
-    setIsSensitiveHidden, 
-    requestPinApproval, 
-    showNotification 
+const EXPENSE_CATEGORIES = [
+    'Kira',
+    'Fatura',
+    'Malzeme Alımı',
+    'Personel',
+    'Diğer'
+];
+
+export const FinanceTab = ({
+    transactions,
+    expenses,
+    setExpenses,
+    sales,
+    isSensitiveHidden,
+    setIsSensitiveHidden,
+    requestPinApproval,
+    showNotification
 }) => {
     const [isOpenModal, setIsOpenModal] = useState(false);
     const [category, setCategory] = useState('Diğer');
     const [amount, setAmount] = useState('');
     const [description, setDescription] = useState('');
-
     const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, targetId: null });
+    const [search, setSearch] = useState('');
+    const [filterCat, setFilterCat] = useState('all');
 
-    const washRevenue = transactions
-        .filter(t => t.status === 'COMPLETED')
-        .reduce((sum, t) => sum + t.totalPrice, 0);
+    const totals = useMemo(() => {
+        const wash = transactions.filter(t => t.status === 'COMPLETED').reduce((s, t) => s + t.totalPrice, 0);
+        const product = sales.reduce((s, x) => s + x.totalPrice, 0);
+        const out = expenses.reduce((s, e) => s + e.amount, 0);
+        return { wash, product, gross: wash + product, out, net: wash + product - out };
+    }, [transactions, sales, expenses]);
 
-    const productRevenue = sales.reduce((sum, s) => sum + s.totalPrice, 0);
-    const totalOutflow = expenses.reduce((sum, e) => sum + e.amount, 0);
-    const grossInflow = washRevenue + productRevenue;
-    const netProfit = grossInflow - totalOutflow;
+    const filteredExpenses = useMemo(() => {
+        const term = search.trim().toLocaleLowerCase('tr-TR');
+        return expenses
+            .filter(e => filterCat === 'all' || e.category === filterCat)
+            .filter(e => !term || `${e.category} ${e.description || ''}`.toLocaleLowerCase('tr-TR').includes(term))
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
+    }, [expenses, filterCat, search]);
 
     const handleAddExpense = (e) => {
         e.preventDefault();
-        const parsedAmount = parsePositiveNumber(amount);
-        if (!parsedAmount) {
+        const parsed = parsePositiveNumber(amount);
+        if (!parsed) {
             showNotification("Geçerli bir gider tutarı girin.", "error");
             return;
         }
-
         const newExpense = {
             id: generateUUID(),
             category,
-            amount: parsedAmount,
+            amount: parsed,
             description,
             date: new Date().toISOString()
         };
-
         setExpenses(prev => [newExpense, ...prev]);
         showNotification("Gider kalemi muhasebeye işlendi.");
         setIsOpenModal(false);
-
         setAmount('');
         setDescription('');
+        setCategory('Diğer');
     };
 
     const handleDeleteRequest = (id) => {
-        requestPinApproval("Gider silmek için şifrenizi girin.", () => {
+        requestPinApproval("Gider silmek için PIN onayı verin.", () => {
             setDeleteConfirm({ isOpen: true, targetId: id });
         });
     };
 
     const confirmDeleteExpense = () => {
-        const id = deleteConfirm.targetId;
-        setExpenses(prev => prev.filter(e => e.id !== id));
-        showNotification("Gider kalemi başarıyla silindi.", "warning");
+        setExpenses(prev => prev.filter(e => e.id !== deleteConfirm.targetId));
+        showNotification("Gider kalemi silindi.", "warning");
         setDeleteConfirm({ isOpen: false, targetId: null });
     };
 
     return (
         <div className="space-y-6 relative text-left">
-            <CustomConfirmModal 
+            <CustomConfirmModal
                 isOpen={deleteConfirm.isOpen}
                 title="Gider Kaydını Sil?"
-                message="Bu gider kalemi muhasebe kayıtlarından tamamen silinecektir. Emin misiniz?"
+                message="Bu gider kalemi muhasebe kayıtlarından kalıcı olarak silinir."
                 onConfirm={confirmDeleteExpense}
                 onCancel={() => setDeleteConfirm({ isOpen: false, targetId: null })}
             />
 
             {isSensitiveHidden && (
-                <div className="absolute inset-0 z-10 bg-darkBg-deep/45 backdrop-blur-xl flex flex-col items-center justify-center p-8 text-center rounded-2xl border border-darkBg-border">
-                    <span className="text-brand-400 mb-3"><Icons.Shield /></span>
-                    <h3 className="text-lg font-bold text-white mb-1">Finansal Veriler Kilitli</h3>
-                    <p className="text-xs text-gray-400 mb-4 max-w-sm">Gelir, gider ve kâr detaylarına ulaşmak için güvenlik PIN kodunuzu girmeniz gerekir.</p>
+                <div className="absolute inset-0 z-10 modal-backdrop flex flex-col items-center justify-center p-8 text-center rounded-2xl border border-darkBg-border">
+                    <span className="inline-flex w-12 h-12 rounded-xl bg-brand-500/15 text-brand-300 ring-1 ring-brand-500/30 items-center justify-center mb-3">
+                        <Icons.Shield />
+                    </span>
+                    <h3 className="text-lg font-extrabold text-white mb-1" style={{ fontFamily: '"Bricolage Grotesque", sans-serif' }}>
+                        Finansal Veriler Kilitli
+                    </h3>
+                    <p className="text-xs text-gray-400 mb-4 max-w-sm">Gelir, gider ve kâr detaylarına ulaşmak için güvenlik PIN kodunuzu girin.</p>
                     <button
                         type="button"
                         onClick={() => {
@@ -91,75 +109,79 @@ export const FinanceTab = ({
                                 setIsSensitiveHidden(false);
                             });
                         }}
-                        className="px-6 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-lg text-xs transition"
+                        className="btn btn-primary"
                     >
-                        PIN Kodu ile Kilidi Aç
+                        PIN ile Kilidi Aç
                     </button>
                 </div>
             )}
 
             <PageHeader
                 title="Kasa & Giderler"
-                description="Hizmet cirolarını, market gelirlerini ve dükkan masraflarını izleyin."
+                description="Cari döneme ait hizmet, ürün ve gider hareketlerini bir bakışta yönetin."
                 actions={
-                    <button
-                        type="button"
-                        onClick={() => setIsOpenModal(true)}
-                        className="px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-sm font-semibold text-white flex items-center space-x-2 transition"
-                    >
+                    <button type="button" onClick={() => setIsOpenModal(true)} className="btn btn-danger">
                         <Icons.Plus />
                         <span>Gider Fişi Ekle</span>
                     </button>
                 }
             />
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-darkBg-card border border-darkBg-border p-5 rounded-xl shadow">
-                    <span className="text-xs text-gray-400 block font-medium">Toplam Gelir (Hizmet+Ürün)</span>
-                    <span className="text-2xl font-extrabold text-emerald-400 tracking-tight">{formatCurrency(grossInflow)}</span>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <StatTile label="Toplam Gelir" value={formatCurrency(totals.gross)} sub="Hizmet + Ürün" icon={<Icons.TrendingUp />} accent="emerald" />
+                <StatTile label="Hizmet Cirosu" value={formatCurrency(totals.wash)} icon={<Icons.Car />} accent="brand" />
+                <StatTile label="Toplam Gider" value={formatCurrency(totals.out)} icon={<Icons.Wallet />} accent="rose" />
+                <StatTile label="Net Kasa" value={formatCurrency(totals.net)} sub={totals.net >= 0 ? 'Kâr' : 'Zarar'} icon={<Icons.Coins />} accent={totals.net >= 0 ? 'brand' : 'rose'} />
+            </div>
+
+            {/* Filter row */}
+            <div className="surface-card rounded-xl p-3 flex flex-col lg:flex-row gap-2 items-stretch lg:items-center">
+                <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"><Icons.Search /></span>
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Açıklama veya kategori ara..."
+                        className="field pl-10"
+                    />
                 </div>
-                <div className="bg-darkBg-card border border-darkBg-border p-5 rounded-xl shadow">
-                    <span className="text-xs text-gray-400 block font-medium">Toplam Gider / Çıkan Para</span>
-                    <span className="text-2xl font-extrabold text-red-400 tracking-tight">{formatCurrency(totalOutflow)}</span>
-                </div>
-                <div className="bg-darkBg-card border border-darkBg-border p-5 rounded-xl shadow">
-                    <span className="text-xs text-gray-400 block font-medium">Net Kasa Durumu</span>
-                    <span className={`text-2xl font-extrabold tracking-tight ${netProfit >= 0 ? 'text-brand-400' : 'text-red-400'}`}>{formatCurrency(netProfit)}</span>
+                <div className="segment shrink-0 overflow-x-auto max-w-full">
+                    <button type="button" data-active={filterCat === 'all'} onClick={() => setFilterCat('all')}>Tümü</button>
+                    {EXPENSE_CATEGORIES.map(cat => (
+                        <button key={cat} type="button" data-active={filterCat === cat} onClick={() => setFilterCat(cat)}>{cat}</button>
+                    ))}
                 </div>
             </div>
 
-            <div className="bg-darkBg-card border border-darkBg-border rounded-xl p-5 shadow">
-                <h3 className="text-sm font-bold text-white mb-4">Gider / Ödeme Defteri</h3>
-                {expenses.length === 0 ? (
-                    <p className="text-xs text-gray-500 py-6 text-center">Herhangi bir dükkan masrafı kaydedilmemiş.</p>
+            <div className="surface-card rounded-2xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-darkBg-border flex items-center justify-between">
+                    <span className="section-title text-[14px]"><Icons.Wallet />Gider Defteri</span>
+                    <span className="pill pill-rose font-mono-num">{filteredExpenses.length}</span>
+                </div>
+                {filteredExpenses.length === 0 ? (
+                    <p className="empty-state">Filtreyle eşleşen gider kalemi yok.</p>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs text-gray-400">
-                            <thead className="bg-darkBg-deep text-gray-300 font-bold border-b border-darkBg-border">
+                        <table className="data-table">
+                            <thead>
                                 <tr>
-                                    <th className="p-3">Tarih</th>
-                                    <th className="p-3">Kategori</th>
-                                    <th className="p-3">Açıklama / Detay</th>
-                                    <th className="p-3 text-right">Tutar</th>
-                                    <th className="p-3 text-center">İşlem</th>
+                                    <th>Tarih</th>
+                                    <th>Kategori</th>
+                                    <th>Açıklama</th>
+                                    <th className="text-right">Tutar</th>
+                                    <th className="text-center">İşlem</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-darkBg-border">
-                                {expenses.map(exp => (
-                                    <tr key={exp.id} className="hover:bg-darkBg-hover">
-                                        <td className="p-3">{new Date(exp.date).toLocaleDateString('tr-TR')}</td>
-                                        <td className="p-3">
-                                            <span className="bg-red-500/10 text-red-400 px-2 py-0.5 rounded text-[10px] font-bold">{exp.category}</span>
-                                        </td>
-                                        <td className="p-3 font-medium text-gray-200">{exp.description || 'Masraf kaydı'}</td>
-                                        <td className="p-3 text-right font-extrabold text-red-400">{formatCurrency(exp.amount)}</td>
-                                        <td className="p-3 text-center">
-                                            <button 
-                                                type="button"
-                                                onClick={() => handleDeleteRequest(exp.id)}
-                                                className="text-gray-500 hover:text-red-400 transition"
-                                                title="Gider Kalemini Sil"
-                                            >
+                            <tbody>
+                                {filteredExpenses.map(exp => (
+                                    <tr key={exp.id}>
+                                        <td className="font-mono-num">{new Date(exp.date).toLocaleDateString('tr-TR')}</td>
+                                        <td><span className="pill pill-rose">{exp.category}</span></td>
+                                        <td className="text-gray-200 font-medium">{exp.description || 'Masraf kaydı'}</td>
+                                        <td className="text-right font-mono-num font-extrabold text-rose-300">{formatCurrency(exp.amount)}</td>
+                                        <td className="text-center">
+                                            <button type="button" onClick={() => handleDeleteRequest(exp.id)} className="text-gray-500 hover:text-rose-300 transition" title="Sil">
                                                 <Icons.Trash />
                                             </button>
                                         </td>
@@ -171,58 +193,54 @@ export const FinanceTab = ({
                 )}
             </div>
 
-            {isOpenModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4">
-                    <div className="w-full max-w-sm bg-darkBg-card border border-darkBg-border rounded-xl p-6 shadow-2xl space-y-4 text-xs">
-                        <h3 className="text-base font-bold text-white">Gider Fişi Kaydı</h3>
-                        
-                        <form onSubmit={handleAddExpense} className="space-y-3">
-                            <div className="space-y-1">
-                                <label className="text-gray-400 block font-semibold">Gider Kategorisi *</label>
-                                <select 
-                                    value={category} 
-                                    onChange={(e) => setCategory(e.target.value)}
-                                    className="w-full bg-darkBg-deep border border-darkBg-border p-2.5 rounded text-white"
-                                >
-                                    <option value="Kira">Kira Ödemesi</option>
-                                    <option value="Fatura">Su, Elektrik, İnternet Faturası</option>
-                                    <option value="Malzeme Alımı">Malzeme & Kimyasal Alımı</option>
-                                    <option value="Personel">Personel Maaş & Prim</option>
-                                    <option value="Diğer">Diğer Masraflar</option>
-                                </select>
-                            </div>
-
-                            <div className="space-y-1">
-                                <label className="text-gray-400 block font-semibold">Gider Tutarı (₺) *</label>
-                                <input 
-                                    type="number" 
-                                    required 
-                                    value={amount} 
-                                    onChange={(e) => setAmount(e.target.value)}
-                                    className="w-full bg-darkBg-deep border border-darkBg-border p-2.5 rounded text-white font-bold" 
-                                />
-                            </div>
-
-                            <div className="space-y-1">
-                                <label className="text-gray-400 block font-semibold">Açıklama / Masraf Nedeni *</label>
-                                <input 
-                                    type="text" 
-                                    required 
-                                    value={description} 
-                                    onChange={(e) => setDescription(e.target.value)}
-                                    placeholder="Elektrik fatura bedeli"
-                                    className="w-full bg-darkBg-deep border border-darkBg-border p-2.5 rounded text-white" 
-                                />
-                            </div>
-
-                            <div className="flex space-x-3 pt-2">
-                                <button type="button" onClick={() => setIsOpenModal(false)} className="flex-1 bg-gray-800 p-2.5 rounded font-bold">Vazgeç</button>
-                                <button type="submit" className="flex-1 bg-red-600 p-2.5 rounded font-bold">Gider Kaydet</button>
-                            </div>
-                        </form>
+            <Modal
+                isOpen={isOpenModal}
+                onClose={() => setIsOpenModal(false)}
+                title="Gider Fişi Kaydı"
+                kicker="Yeni gider"
+                description="Kategori, tutar ve kısa bir açıklama girerek defteri güncelleyin."
+                icon={<Icons.Wallet />}
+                accent="rose"
+                size="sm"
+                footer={
+                    <div className="flex gap-3">
+                        <button type="button" onClick={() => setIsOpenModal(false)} className="btn btn-ghost flex-1">Vazgeç</button>
+                        <button type="submit" form="exp-form" className="btn btn-danger flex-1">Gideri Kaydet</button>
                     </div>
-                </div>
-            )}
+                }
+            >
+                <form id="exp-form" onSubmit={handleAddExpense} className="space-y-4 text-xs">
+                    <div>
+                        <label className="field-label">Kategori *</label>
+                        <select value={category} onChange={(e) => setCategory(e.target.value)} className="field">
+                            {EXPENSE_CATEGORIES.map(cat => <option key={cat}>{cat}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="field-label">Tutar (₺) *</label>
+                        <input
+                            type="number"
+                            required
+                            min={0}
+                            step="0.01"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            className="field font-mono-num text-right text-base"
+                        />
+                    </div>
+                    <div>
+                        <label className="field-label">Açıklama *</label>
+                        <input
+                            type="text"
+                            required
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder="Örn: Elektrik fatura ödemesi"
+                            className="field"
+                        />
+                    </div>
+                </form>
+            </Modal>
         </div>
     );
 };

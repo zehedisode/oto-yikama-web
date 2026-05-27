@@ -257,7 +257,7 @@ export const CustomersTab = ({
                     active={showOnlyReady}
                 />
                 <KpiCard label="Son 30 Günde Yeni" value={summary.newThisMonth} icon={<Icons.Plus />} accent="amber" />
-                <KpiCard label="Müşteri Başı Ziyaret" value={summary.avgVisits.toFixed(1)} icon={<Icons.Car />} accent="indigo" />
+                <KpiCard label="Müşteri Başı Ziyaret" value={summary.avgVisits.toFixed(1)} icon={<Icons.Car />} accent="brand" />
             </div>
 
             {/* Search + filters */}
@@ -500,29 +500,27 @@ export const CustomersTab = ({
 
 const KpiCard = ({ label, value, icon, accent = 'brand', onClick, active }) => {
     const colors = {
-        brand: { bg: 'bg-brand-500/10', text: 'text-brand-400', activeBg: 'bg-brand-600' },
-        emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', activeBg: 'bg-emerald-600' },
-        amber: { bg: 'bg-amber-500/10', text: 'text-amber-400', activeBg: 'bg-amber-600' },
-        indigo: { bg: 'bg-indigo-500/10', text: 'text-indigo-400', activeBg: 'bg-indigo-600' }
+        brand: { bg: 'bg-brand-500/10 ring-brand-500/30', text: 'text-brand-300' },
+        emerald: { bg: 'bg-emerald-500/10 ring-emerald-500/30', text: 'text-emerald-300' },
+        amber: { bg: 'bg-amber-500/10 ring-amber-500/30', text: 'text-amber-300' },
+        rose: { bg: 'bg-rose-500/10 ring-rose-500/30', text: 'text-rose-300' }
     };
     const c = colors[accent] || colors.brand;
+    const Wrapper = onClick ? 'button' : 'div';
     return (
-        <button
+        <Wrapper
             type={onClick ? 'button' : undefined}
-            onClick={onClick}
-            disabled={!onClick}
-            className={`text-left bg-darkBg-card border rounded-2xl p-4 shadow-lg transition ${
-                active ? `border-${accent}-500/60 ring-1 ring-${accent}-500/40` : 'border-darkBg-border'
-            } ${onClick ? 'hover:border-brand-500/40 cursor-pointer' : 'cursor-default'}`}
+            onClick={onClick || undefined}
+            className={`surface-card kpi-card rounded-xl p-4 flex items-center justify-between text-left transition ${
+                onClick ? 'hover:border-brand-500/40 cursor-pointer' : ''
+            } ${active ? 'border-brand-500/60 ring-1 ring-brand-500/40' : ''}`}
         >
-            <div className="flex items-center justify-between">
-                <div>
-                    <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold block">{label}</span>
-                    <span className="text-2xl font-extrabold text-white tracking-tight mt-1 block">{value}</span>
-                </div>
-                <span className={`p-2.5 rounded-lg ${c.bg} ${c.text}`}>{icon}</span>
+            <div className="relative min-w-0">
+                <span className="block text-[10px] text-gray-500 font-extrabold uppercase tracking-[0.18em] mb-1">{label}</span>
+                <span className="kpi-value text-[22px] block text-white">{value}</span>
             </div>
-        </button>
+            <span className={`relative shrink-0 p-3 rounded-lg ring-1 ${c.bg} ${c.text}`}>{icon}</span>
+        </Wrapper>
     );
 };
 

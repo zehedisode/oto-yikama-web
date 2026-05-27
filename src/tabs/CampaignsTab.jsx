@@ -228,11 +228,7 @@ export const CampaignsTab = ({
                 title="İndirim & Kampanyalar"
                 description="Satışlarda otomatik uygulanan sepet ve araç sınıfı indirimlerini belirleyin."
                 actions={
-                    <button
-                        type="button"
-                        onClick={openNew}
-                        className="px-4 py-2 bg-brand-600 hover:bg-brand-500 rounded-lg text-sm font-semibold text-white flex items-center space-x-2 transition"
-                    >
+                    <button type="button" onClick={openNew} className="btn btn-primary">
                         <Icons.Plus />
                         <span>Yeni Kampanya Kur</span>
                     </button>

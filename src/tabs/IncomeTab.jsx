@@ -2,6 +2,7 @@ const { useState, useMemo } = React;
 
 import { formatCurrency, PAYMENT_METHODS, getPaymentLabel, LOYALTY_REWARD_PAYMENT, ANONYMOUS_CUSTOMER_ID } from '../core/app-core.js';
 import { PageHeader } from '../ui/PageHeader.jsx';
+import { StatTile } from '../ui/StatTile.jsx';
 import { CustomConfirmModal } from '../ui/ConfirmModal.jsx';
 import { Icons } from '../core/icons.jsx';
 
@@ -239,9 +240,13 @@ export const IncomeTab = ({
             />
 
             {isSensitiveHidden && (
-                <div className="absolute inset-0 z-10 bg-darkBg-deep/45 backdrop-blur-xl flex flex-col items-center justify-center p-8 text-center rounded-2xl border border-darkBg-border">
-                    <span className="text-brand-400 mb-3"><Icons.Shield /></span>
-                    <h3 className="text-lg font-bold text-white mb-1">Gelir Kayıtları Kilitli</h3>
+                <div className="absolute inset-0 z-10 modal-backdrop flex flex-col items-center justify-center p-8 text-center rounded-2xl border border-darkBg-border">
+                    <span className="inline-flex w-12 h-12 rounded-xl bg-brand-500/15 text-brand-300 ring-1 ring-brand-500/30 items-center justify-center mb-3">
+                        <Icons.Shield />
+                    </span>
+                    <h3 className="text-lg font-extrabold text-white mb-1" style={{ fontFamily: '"Bricolage Grotesque", sans-serif' }}>
+                        Gelir Kayıtları Kilitli
+                    </h3>
                     <p className="text-xs text-gray-400 mb-4 max-w-sm">Tüm gelir hareketlerini görmek için güvenlik PIN kodunuzu girin.</p>
                     <button
                         type="button"
@@ -250,9 +255,9 @@ export const IncomeTab = ({
                                 setIsSensitiveHidden(false);
                             });
                         }}
-                        className="px-6 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-lg text-xs transition"
+                        className="btn btn-primary"
                     >
-                        PIN Kodu ile Kilidi Aç
+                        PIN ile Kilidi Aç
                     </button>
                 </div>
             )}
@@ -261,51 +266,18 @@ export const IncomeTab = ({
                 title="Gelir Kayıtları"
                 description="Tamamlanan tüm hizmet ve ürün satışlarından gelen gelir hareketleri."
                 actions={
-                    <button
-                        type="button"
-                        onClick={handleExportCsv}
-                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-semibold text-white flex items-center space-x-2 transition"
-                    >
+                    <button type="button" onClick={handleExportCsv} className="btn btn-success">
                         <Icons.Download />
                         <span>CSV İndir</span>
                     </button>
                 }
             />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-darkBg-card border border-darkBg-border p-5 rounded-xl shadow flex items-center justify-between">
-                    <div>
-                        <span className="text-xs text-gray-400 block font-medium">Toplam Gelir</span>
-                        <span className="text-2xl font-extrabold text-emerald-400 tracking-tight">{formatCurrency(summary.total)}</span>
-                    </div>
-                    <span className="p-3 bg-emerald-500/10 text-emerald-400 rounded-lg"><Icons.TrendingUp /></span>
-                </div>
-                <div className="bg-darkBg-card border border-darkBg-border p-5 rounded-xl shadow flex items-center justify-between">
-                    <div>
-                        <span className="text-xs text-gray-400 block font-medium">Hizmet Geliri</span>
-                        <span className="text-2xl font-extrabold text-brand-400 tracking-tight">{formatCurrency(summary.service)}</span>
-                    </div>
-                    <span className="p-3 bg-brand-500/10 text-brand-400 rounded-lg"><Icons.Car /></span>
-                </div>
-                <div className="bg-darkBg-card border border-darkBg-border p-5 rounded-xl shadow flex items-center justify-between">
-                    <div>
-                        <span className="text-xs text-gray-400 block font-medium">Ürün Geliri</span>
-                        <span className="text-2xl font-extrabold text-amber-400 tracking-tight">{formatCurrency(summary.product)}</span>
-                    </div>
-                    <span className="p-3 bg-amber-500/10 text-amber-400 rounded-lg"><Icons.Package /></span>
-                </div>
-                <div className="bg-darkBg-card border border-darkBg-border p-5 rounded-xl shadow flex items-center justify-between">
-                    <div>
-                        <span className="text-xs text-gray-400 block font-medium">Kayıt Adedi</span>
-                        <span className="text-2xl font-extrabold text-white tracking-tight">{summary.count}</span>
-                        {summary.loyaltyCount > 0 && (
-                            <span className="text-[10px] text-emerald-400 block mt-1">
-                                {summary.loyaltyCount} sadakat ödülü dahil
-                            </span>
-                        )}
-                    </div>
-                    <span className="p-3 bg-white/5 text-gray-300 rounded-lg"><Icons.Clipboard /></span>
-                </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <StatTile label="Toplam Gelir" value={formatCurrency(summary.total)} icon={<Icons.TrendingUp />} accent="emerald" />
+                <StatTile label="Hizmet Geliri" value={formatCurrency(summary.service)} icon={<Icons.Car />} accent="brand" />
+                <StatTile label="Ürün Geliri" value={formatCurrency(summary.product)} icon={<Icons.Package />} accent="amber" />
+                <StatTile label="Kayıt Adedi" value={summary.count} sub={summary.loyaltyCount > 0 ? `${summary.loyaltyCount} sadakat ödülü dahil` : null} icon={<Icons.Clipboard />} accent="neutral" />
             </div>
 
             <div className="bg-darkBg-card border border-darkBg-border rounded-xl p-5 shadow space-y-4">

@@ -93,6 +93,28 @@ Tasarim yonu: **refined automotive operations console**. Endustriyel ama lukstur
 gece servisi atmosferi, soft brand-bloom ve parlatilmis hairline kenarlar.
 Ozellikle plaka, tutar ve PIN gibi sayisal alanlar mono ile vurgulanir.
 
+### Ortak UI Primitifleri
+
+Tab'larda kopyala-yapistir className zincirleri yerine asagidaki bilesenler kullanilir:
+
+| Bilesen / Sinif         | Yeri                            | Amac                                                  |
+| ----------------------- | ------------------------------- | ----------------------------------------------------- |
+| `<Modal />`             | `src/ui/Modal.jsx`              | Cam backdrop, sol renk rayi, sticky footer            |
+| `<StatTile />`          | `src/ui/StatTile.jsx`           | KPI tile (label / value / sub / icon / accent)        |
+| `<PageHeader />`        | `src/ui/PageHeader.jsx`         | Display baslik + brand kicker + brand alt vurgu       |
+| `<NavButton />`         | `src/ui/NavButton.jsx`          | Sidebar navigasyonu, sol rail + glow                  |
+| `<NotificationBadge />` | `src/ui/NotificationBadge.jsx`  | Sag-ust toast (success / warning / error)             |
+| `.field`, `.field-label`| `assets/css/styles.css`         | Form alani + ust etiket (uppercase kicker)            |
+| `.btn` + variantlar     | `assets/css/styles.css`         | `btn-primary`, `btn-success`, `btn-danger`, `btn-ghost`, `btn-soft`, `btn-icon` |
+| `.data-table`           | `assets/css/styles.css`         | Hairline tablolar + sticky header + hover satir       |
+| `.segment`              | `assets/css/styles.css`         | Pill-button group (filtre/segment kontrolu)           |
+| `.pill-*`               | `assets/css/styles.css`         | Status pill'leri (`brand`/`emerald`/`amber`/`rose`/`neutral`) |
+| `.surface-card`         | `assets/css/styles.css`         | Hairline kart yuzeyi + ust sheen                      |
+| `.kpi-card`, `.kpi-value`| `assets/css/styles.css`        | KPI bloomlu tile + display agirligi sayilar           |
+| `.plate-chip`           | `assets/css/styles.css`         | Plaka rozeti (mono + brand cerceve)                   |
+| `.font-mono-num`        | `assets/css/styles.css`         | Tabular-num mono sayilar (tutar / telefon / tarih)    |
+| `.modal-backdrop`       | `assets/css/styles.css`         | Cam blur + radial bloom backdrop                      |
+
 ### Tipografi
 
 | Rol            | Font                                     | Kullanim                           |
@@ -100,15 +122,6 @@ Ozellikle plaka, tutar ve PIN gibi sayisal alanlar mono ile vurgulanir.
 | Display        | `Bricolage Grotesque` (500..800)         | `<h1>`, `<h2>`, `<h3>`, KPI degerleri |
 | Body           | `Plus Jakarta Sans` (300..800)           | `<body>` ve metinler               |
 | Mono / Numerik | `JetBrains Mono` (500..700)              | Plaka, tutar, PIN, telefon, tarih  |
-
-Yardimci siniflar:
-
-- `.font-mono-num` -> mono numerik (tabular-num + lining figures).
-- `.kpi-value` -> Bricolage agirligi + tabular-num + sikilastirilmis tracking.
-- `.plate-chip` -> Markaya uygun plaka rozeti (ic gradyan + brand cerceve).
-- `.surface-card` -> Hairline ust highlight + yumusak govde golgesi.
-- `.kpi-card` -> Sag-ust kosede yumusak brand bloom (radial-gradient pseudo).
-- `.modal-backdrop` -> Cam gibi blur + saturate edilmis modal arka plani.
 
 ### Renkler
 
@@ -131,34 +144,20 @@ Tailwind tema tokenlari `tailwind.config.cjs` icinde sabittir. Onemli olanlar:
 
 `prefers-reduced-motion` etkinse tum animasyonlar 0.01ms'e dusurulur.
 
-### Bilesen Notlari
+### Yeni Ekran Eklerken
 
-- `AppLogo` -> Gradyan badge + sheen + brand glow. Wordmark display fontunda.
-- `NavButton` -> Sol "rail" gostergesi + brand glow nokta. Aktif durum
-  gradyan ile vurgulanir, hover hairline gosterir.
-- `PageHeader` -> Display baslik + brand kicker etiketi + 56px alt vurgu cizgisi.
-- `NotificationBadge` -> Sol renk rayi + ikon nisi + uppercase rol etiketi.
-- `ConfirmModal`, `PinGateModal` -> Sol renk rayi (amber/brand) + cam backdrop.
-- `LockScreen` -> Tum ekran modal-backdrop + dekoratif grid + sayisal tuslar
-  mono font ile. Klavye kisayollari (0-9, Backspace, Esc, Enter) korunur.
-- `FinanceChart` -> Coklu durakli gradyan barlar + zemin yatay grid.
-  Hassas mod aktifken yukseklikler esitlenir; tutarlar `font-mono-num` + blur ile gizlenir.
-- `DashboardTab` KPI tile'lari `kpi-card` + `kpi-value` ile yenilendi.
+1. `tabs/` altinda dosyayi olustur, ust kismi `<PageHeader />` ile cer.
+2. KPI'lar icin `<StatTile />` kullan; ozel kart gerekirse `surface-card kpi-card` siniflarini elle ekle.
+3. Form alanlarinda her zaman `.field` + `.field-label` (uppercase kicker).
+4. Buton stilini `.btn` + variant ile uygula; yan yana isim ikon kombinasyonlari icin gap-2 yeterli.
+5. Tablolarda `.data-table`; status icin `.pill-*` ve `.status-dot-*`.
+6. Modallar icin daima `<Modal />` kullan; sol rayda dogru `accent` (brand/emerald/amber/rose) sec.
+7. Plaka -> `<span className="plate-chip">{plate}</span>`. Tutar / sayilar -> `font-mono-num` veya `kpi-value`.
+8. Tema tokenlari (`brand-*`, `darkBg-*`) disinda renk hardcode etme.
 
 ### Erisilebilirlik
 
 - `:focus-visible` brand renginde 2px outline + 4px halka (`box-shadow`).
 - Tum modallarda `role="dialog"` ve `aria-modal="true"` korundu.
 - Lock ekrani arka plan icerikten focus kacisini engelleyen tab-trap'a sahiptir.
-- Renk kontrastlari: brand-300 / emerald-300 / rose-300 / amber-300 koyu zemin
-  uzerinde WCAG AA gereksinimini karsilar; hassas tutarlar blur + select-none
-  ile bilgisel olarak da maskelenir.
-
-### Yeni Ekran Eklerken
-
-1. `tabs/` altinda tab dosyasini olustur, ust kismini `<PageHeader />` ile cer.
-2. KPI tile'lari icin `surface-card kpi-card` + `kpi-value` siniflarini kullan.
-3. Plaka gosteriminde `<span className="plate-chip">{plate}</span>`.
-4. Tutar / sayisal alanlarda `font-mono-num` veya `kpi-value` siniflari.
-5. Tema tokenlari (`brand-*`, `darkBg-*`) disinda renk hardcode etme.
 
