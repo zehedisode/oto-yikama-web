@@ -6,6 +6,7 @@ import {
     getPinLockState,
     PIN_ATTEMPT_LIMIT
 } from '../core/security.js';
+import { PIN_MIN_LENGTH, PIN_MAX_LENGTH } from '../core/app-core.js';
 
 const formatRemaining = (ms) => {
     const totalSeconds = Math.ceil(ms / 1000);
@@ -32,20 +33,12 @@ export const PinGateModal = ({ isOpen, customText, gatePin, setGatePin, onFail, 
         return () => clearInterval(interval);
     }, [isOpen, gatePin]);
 
-    // 4 hane tamamlandığında Enter beklemeden otomatik onayla.
-    useEffect(() => {
-        if (!isOpen) return undefined;
-        if (gatePin.length !== 4) return undefined;
-        if (getCooldownRemainingMs() > 0) return undefined;
-        const timer = setTimeout(() => onSubmit(), 150);
-        return () => clearTimeout(timer);
-    }, [gatePin, isOpen, onSubmit]);
-
     if (!isOpen) return null;
 
     const isCoolingDown = cooldownMs > 0;
     const remainingInTier = PIN_ATTEMPT_LIMIT - (failedAttempts % PIN_ATTEMPT_LIMIT);
     const showAttemptsHint = !isCoolingDown && failedAttempts > 0 && remainingInTier < PIN_ATTEMPT_LIMIT;
+    const canSubmit = !isCoolingDown && gatePin.length >= PIN_MIN_LENGTH && gatePin.length <= PIN_MAX_LENGTH;
 
     return (
         <div
@@ -59,8 +52,11 @@ export const PinGateModal = ({ isOpen, customText, gatePin, setGatePin, onFail, 
                     <Icons.Shield />
                     <span>Güvenlik Onayı</span>
                 </h3>
-                <p className="text-sm text-gray-400 mb-4 text-left">
+                <p className="text-sm text-gray-400 mb-1 text-left">
                     {customText || 'Bu işleme devam etmek için Yönetici PIN kodunu giriniz.'}
+                </p>
+                <p className="text-[11px] text-gray-500 mb-4 text-left">
+                    {PIN_MIN_LENGTH}-{PIN_MAX_LENGTH} hane arası rakam. Girdikten sonra <span className="text-brand-300 font-bold">Onayla</span>'ya basın.
                 </p>
 
                 {isCoolingDown && (
@@ -75,15 +71,16 @@ export const PinGateModal = ({ isOpen, customText, gatePin, setGatePin, onFail, 
                     </p>
                 )}
 
-                <form onSubmit={(e) => { e.preventDefault(); if (!isCoolingDown) onSubmit(); }} className="space-y-4">
+                <form onSubmit={(e) => { e.preventDefault(); if (canSubmit) onSubmit(); }} className="space-y-4">
                     <input
                         type="password"
-                        maxLength={4}
+                        inputMode="numeric"
+                        maxLength={PIN_MAX_LENGTH}
                         autoFocus
                         disabled={isCoolingDown}
                         placeholder="••••"
                         value={gatePin}
-                        onChange={(e) => setGatePin(e.target.value.replace(/\D/g, ''))}
+                        onChange={(e) => setGatePin(e.target.value.replace(/\D/g, '').slice(0, PIN_MAX_LENGTH))}
                         className={`w-full text-center text-2xl tracking-widest bg-darkBg-deep border border-darkBg-border p-3 rounded-lg text-brand-400 font-bold focus:outline-none focus:border-brand-500 ${
                             isCoolingDown ? 'opacity-50 cursor-not-allowed' : ''
                         }`}
@@ -98,9 +95,9 @@ export const PinGateModal = ({ isOpen, customText, gatePin, setGatePin, onFail, 
                         </button>
                         <button
                             type="submit"
-                            disabled={isCoolingDown || gatePin.length !== 4}
+                            disabled={!canSubmit}
                             className={`flex-1 text-sm py-2 rounded-lg font-semibold transition ${
-                                isCoolingDown || gatePin.length !== 4
+                                !canSubmit
                                     ? 'bg-brand-900/40 text-brand-300/50 cursor-not-allowed'
                                     : 'bg-brand-600 hover:bg-brand-500'
                             }`}

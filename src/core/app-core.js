@@ -6,6 +6,11 @@ export const DEFAULT_SETTINGS = Object.freeze({
     backup_reminder_days: 7
 });
 
+// PIN uzunluk sınırları. Eski sürümlerle geriye dönük uyumlu olmak için
+// minimum 4'te tutuldu; üst sınır kullanıcıya esneklik sağlar.
+export const PIN_MIN_LENGTH = 4;
+export const PIN_MAX_LENGTH = 12;
+
 export const VEHICLE_TYPES = Object.freeze([
     { id: 'SEDAN', label: 'Sedan' },
     { id: 'SUV', label: 'SUV' },

@@ -1,6 +1,6 @@
 const { useEffect, useState } = React;
 
-import { DEFAULT_SETTINGS, parsePositiveInteger, hasOwn } from '../core/app-core.js';
+import { DEFAULT_SETTINGS, parsePositiveInteger, hasOwn, PIN_MIN_LENGTH, PIN_MAX_LENGTH } from '../core/app-core.js';
 import { createCleanDatabase, normalizeBackupData, persistDatabaseObject } from '../core/db.js';
 import {
     isAutoBackupSupported,
@@ -96,8 +96,8 @@ export const BackupTab = ({
         const parsedTargetVisits = Math.max(1, parsePositiveInteger(targetVisits, DEFAULT_SETTINGS.loyalty_target_visits));
         const parsedIdleTime = Math.max(15, parsePositiveInteger(idleTime, DEFAULT_SETTINGS.idle_lock_time));
 
-        if (cleanPin.length !== 4) {
-            showNotification("PIN kodu 4 haneli olmalıdır.", "error");
+        if (cleanPin.length < PIN_MIN_LENGTH || cleanPin.length > PIN_MAX_LENGTH) {
+            showNotification(`PIN kodu ${PIN_MIN_LENGTH}-${PIN_MAX_LENGTH} hane arası olmalıdır.`, "error");
             return;
         }
 
@@ -361,9 +361,9 @@ export const BackupTab = ({
                     {autoSupported && autoHandle && (
                         <div className="space-y-2">
                             <div className="bg-darkBg-deep border border-darkBg-border rounded p-3 space-y-1">
-                                <div className="flex justify-between items-center text-[11px]">
-                                    <span className="text-gray-400">Dosya:</span>
-                                    <span className="text-gray-200 font-bold truncate ml-2" title={autoHandle.name}>{autoHandle.name || '—'}</span>
+                                <div className="flex justify-between items-start gap-2 text-[11px]">
+                                    <span className="text-gray-400 shrink-0">Yedek dosyası:</span>
+                                    <span className="text-emerald-300 font-bold truncate text-right" title={autoHandle.name}>{autoHandle.name || '—'}</span>
                                 </div>
                                 <div className="flex justify-between items-center text-[11px]">
                                     <span className="text-gray-400">Son yazım:</span>
@@ -377,6 +377,9 @@ export const BackupTab = ({
                                         {autoPermission === 'granted' ? 'İzin verildi' : autoPermission === 'prompt' ? 'İzin yenilenmeli' : autoPermission === 'denied' ? 'İzin reddedildi' : 'Bilinmiyor'}
                                     </span>
                                 </div>
+                                <p className="text-[10px] text-gray-500 leading-snug pt-1 border-t border-darkBg-border/60 mt-1">
+                                    Tarayıcı güvenlik kuralları gereği tam dosya yolu gösterilemez. Konumu değiştirmek için aşağıdaki <span className="text-brand-300 font-bold">Konumu Değiştir</span> butonunu kullanın.
+                                </p>
                             </div>
 
                             {autoPermission !== 'granted' && (
@@ -400,12 +403,20 @@ export const BackupTab = ({
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={handleAutoBackupDisconnect}
-                                    className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-bold py-2 rounded transition"
+                                    onClick={handleAutoBackupConnect}
+                                    disabled={autoBusy}
+                                    className="bg-darkBg-deep hover:bg-darkBg-border border border-brand-500/40 text-brand-300 font-bold py-2 rounded transition disabled:opacity-60"
                                 >
-                                    Bağlantıyı Kaldır
+                                    Konumu Değiştir
                                 </button>
                             </div>
+                            <button
+                                type="button"
+                                onClick={handleAutoBackupDisconnect}
+                                className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-bold py-2 rounded transition"
+                            >
+                                Bağlantıyı Kaldır
+                            </button>
                         </div>
                     )}
                 </div>
@@ -421,14 +432,16 @@ export const BackupTab = ({
 
                     <form onSubmit={saveSettings} className="space-y-4">
                         <div className="space-y-1">
-                            <label className="text-gray-400 block font-semibold">Giriş / Yönetici PIN Kodu (4 Hane)</label>
-                            <input 
-                                type="password" 
-                                maxLength={4}
-                                value={pinSetting} 
-                                onChange={(e) => setPinSetting(e.target.value.replace(/\D/g, ''))}
-                                className="w-full bg-darkBg-deep border border-darkBg-border p-2 rounded text-white font-bold tracking-widest text-center" 
+                            <label className="text-gray-400 block font-semibold">Giriş / Yönetici PIN Kodu ({PIN_MIN_LENGTH}-{PIN_MAX_LENGTH} Hane)</label>
+                            <input
+                                type="password"
+                                inputMode="numeric"
+                                maxLength={PIN_MAX_LENGTH}
+                                value={pinSetting}
+                                onChange={(e) => setPinSetting(e.target.value.replace(/\D/g, '').slice(0, PIN_MAX_LENGTH))}
+                                className="w-full bg-darkBg-deep border border-darkBg-border p-2 rounded text-white font-bold tracking-widest text-center"
                             />
+                            <p className="text-[10px] text-gray-500">Sadece rakam. En az {PIN_MIN_LENGTH}, en fazla {PIN_MAX_LENGTH} hane.</p>
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">

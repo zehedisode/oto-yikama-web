@@ -6,6 +6,7 @@ import {
     getCooldownRemainingMs,
     PIN_ATTEMPT_LIMIT
 } from '../core/security.js';
+import { PIN_MIN_LENGTH, PIN_MAX_LENGTH } from '../core/app-core.js';
 
 const formatRemaining = (ms) => {
     const totalSeconds = Math.ceil(ms / 1000);
@@ -49,18 +50,21 @@ export const LockScreen = ({ users, handleUnlock, pinError, onPinReset }) => {
     const remainingInTier = PIN_ATTEMPT_LIMIT - (failedAttempts % PIN_ATTEMPT_LIMIT);
     const showAttemptsHint = !isCoolingDown && failedAttempts > 0 && remainingInTier < PIN_ATTEMPT_LIMIT;
 
+    const submitPin = (value) => {
+        const trimmed = (value || '').slice(0, PIN_MAX_LENGTH);
+        if (trimmed.length < PIN_MIN_LENGTH) return;
+        handleUnlock(trimmed);
+        setPin('');
+    };
+
     // Kilitliyken arka plan içeriğine Tab ile ulaşılmasını engelle.
     useEffect(() => {
         const root = document.getElementById('root');
         if (!root) return undefined;
         const previous = root.getAttribute('aria-hidden');
         const previousInert = root.getAttribute('inert');
-        // Kilit modali aslında root'un içinde render olduğu için root yerine 'main' bölgesini kilitlemek mantıklı.
-        // Ancak bu uygulamada LockScreen tüm ekrana fixed konumlandırıldığı için yeterli korumayı zaten sağlar.
-        // Yine de odak yönetimini güçlendirmek için klavye tuzağı ekleyelim.
         const handler = (event) => {
             if (event.key === 'Tab') {
-                // Tab ile arka plana atlamayı engelle; LockScreen düğmeleri zaten aynı modal içinde dolaşır.
                 const focusable = document.querySelectorAll('.lock-screen-focusable');
                 if (focusable.length === 0) return;
                 const first = focusable[0];
@@ -86,20 +90,12 @@ export const LockScreen = ({ users, handleUnlock, pinError, onPinReset }) => {
 
     const handleKeypad = (num) => {
         if (isCoolingDown) return;
-        if (pin.length < 4) {
-            const newPin = pin + num;
-            setPin(newPin);
-            if (newPin.length === 4) {
-                setTimeout(() => {
-                    handleUnlock(newPin);
-                    setPin('');
-                }, 200);
-            }
-        }
+        if (pin.length >= PIN_MAX_LENGTH) return;
+        setPin(prev => prev + num);
     };
     const handleBackspace = () => {
         if (isCoolingDown) return;
-        setPin(pin.slice(0, -1));
+        setPin(prev => prev.slice(0, -1));
     };
 
     // Fiziksel klavye desteği: 0-9 ile yaz, Backspace ile sil, Escape ile temizle, Enter ile doğrula.
@@ -108,7 +104,6 @@ export const LockScreen = ({ users, handleUnlock, pinError, onPinReset }) => {
             if (showRecovery) return;
             if (isCoolingDown) return;
 
-            // Modifier tuşlu kombinasyonları (Ctrl+R vb.) yakalama.
             if (event.ctrlKey || event.metaKey || event.altKey) return;
 
             if (/^[0-9]$/.test(event.key)) {
@@ -126,15 +121,16 @@ export const LockScreen = ({ users, handleUnlock, pinError, onPinReset }) => {
                 setPin('');
                 return;
             }
-            if (event.key === 'Enter' && pin.length === 4) {
+            if (event.key === 'Enter' && pin.length >= PIN_MIN_LENGTH) {
                 event.preventDefault();
-                handleUnlock(pin);
-                setPin('');
+                submitPin(pin);
             }
         };
         document.addEventListener('keydown', onKeyDown);
         return () => document.removeEventListener('keydown', onKeyDown);
-    }, [pin, isCoolingDown, showRecovery, handleUnlock]);
+    }, [pin, isCoolingDown, showRecovery]);
+
+    const dotCount = Math.max(PIN_MIN_LENGTH, Math.min(PIN_MAX_LENGTH, pin.length || PIN_MIN_LENGTH));
 
     return (
         <div
@@ -148,15 +144,18 @@ export const LockScreen = ({ users, handleUnlock, pinError, onPinReset }) => {
                     <AppLogo />
                 </div>
 
-                <p className="text-sm text-gray-400 mb-6">Sisteme erişmek için 4 haneli PIN kodunuzu girin</p>
-                
-                <div className="flex space-x-4 mb-6">
-                    {[...Array(4)].map((_, i) => (
+                <p className="text-sm text-gray-400 mb-2">PIN kodunuzu girin</p>
+                <p className="text-[11px] text-gray-500 mb-5">
+                    {PIN_MIN_LENGTH}-{PIN_MAX_LENGTH} hane arası rakam, ardından <span className="text-brand-300 font-bold">Onayla</span>'ya basın
+                </p>
+
+                <div className="flex flex-wrap justify-center gap-2 mb-6 max-w-[280px]">
+                    {[...Array(dotCount)].map((_, i) => (
                         <div
                             key={i}
-                            className={`w-4 h-4 rounded-full border-2 transition-all duration-150 ${
-                                pin.length > i 
-                                    ? 'bg-brand-500 border-brand-500 shadow-md shadow-brand-500/50 scale-110' 
+                            className={`w-3 h-3 rounded-full border-2 transition-all duration-150 ${
+                                pin.length > i
+                                    ? 'bg-brand-500 border-brand-500 shadow-md shadow-brand-500/50 scale-110'
                                     : 'border-gray-600'
                             }`}
                         />
@@ -179,7 +178,7 @@ export const LockScreen = ({ users, handleUnlock, pinError, onPinReset }) => {
                     </p>
                 )}
 
-                <div className="grid grid-cols-3 gap-4 w-full max-w-xs mb-6" aria-disabled={isCoolingDown}>
+                <div className="grid grid-cols-3 gap-4 w-full max-w-xs mb-4" aria-disabled={isCoolingDown}>
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
                         <button
                             key={num}
@@ -228,6 +227,20 @@ export const LockScreen = ({ users, handleUnlock, pinError, onPinReset }) => {
                         Sil
                     </button>
                 </div>
+
+                <button
+                    type="button"
+                    disabled={isCoolingDown || pin.length < PIN_MIN_LENGTH}
+                    onClick={() => submitPin(pin)}
+                    className={`lock-screen-focusable w-full max-w-xs h-12 rounded-xl text-sm font-bold transition mb-4 ${
+                        isCoolingDown || pin.length < PIN_MIN_LENGTH
+                            ? 'bg-brand-900/40 text-brand-300/50 cursor-not-allowed'
+                            : 'bg-brand-600 hover:bg-brand-500 text-white'
+                    }`}
+                >
+                    Onayla
+                </button>
+
                 <span className="text-xs text-gray-600">PIN ayarları Sistem & Yedekleme bölümünden yönetilir.</span>
 
                 {onPinReset && (
