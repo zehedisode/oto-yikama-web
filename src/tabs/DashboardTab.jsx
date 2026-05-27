@@ -204,6 +204,7 @@ export const DashboardTab = ({
                         washIncome={completedWashRevenues} 
                         productIncome={productRevenues} 
                         totalExpenses={totalExpenses} 
+                        isSensitiveHidden={isSensitiveHidden}
                     />
                 </div>
 
