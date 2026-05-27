@@ -26,7 +26,22 @@ export const PAYMENT_METHODS = Object.freeze([
     { id: 'unpaid', label: 'Açık Hesap', icon: '⏳' }
 ]);
 
-export const getPaymentLabel = (id) => PAYMENT_METHODS.find(p => p.id === id)?.label || 'Nakit';
+// Sadakat ödülü ile yapılan satışlarda paymentMethod alanına yazılan özel sentinel değer.
+// PAYMENT_METHODS listesinin dışında durur; raporlar bunu gördüğünde "Ödül" olarak gösterir.
+export const LOYALTY_REWARD_PAYMENT = 'reward';
+
+// Müşteri kartı silindiğinde geçmiş işlemlerin işaretlendiği sentinel id.
+// Ciroyu ve gelir kayıtlarını korur; UI'da "Anonim Müşteri" olarak gösterilir.
+export const ANONYMOUS_CUSTOMER_ID = 'ANONIM_MUSTERI';
+
+// Hızlı market satışlarında müşteri seçilmediğinde kullanılan sentinel id.
+// UI'da "Cari Müşteri (Kayıtsız)" olarak gösterilir.
+export const WALK_IN_CUSTOMER_ID = 'CARI_MUSTERI';
+
+export const getPaymentLabel = (id) => {
+    if (id === LOYALTY_REWARD_PAYMENT) return 'Sadakat Ödülü';
+    return PAYMENT_METHODS.find(p => p.id === id)?.label || 'Nakit';
+};
 
 export const APPOINTMENT_STATUS = Object.freeze({
     PENDING: 'BEKLEYOR',

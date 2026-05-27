@@ -1,6 +1,6 @@
 const { useState, useMemo } = React;
 
-import { formatCurrency, PAYMENT_METHODS, getPaymentLabel } from '../core/app-core.js';
+import { formatCurrency, PAYMENT_METHODS, getPaymentLabel, LOYALTY_REWARD_PAYMENT, ANONYMOUS_CUSTOMER_ID } from '../core/app-core.js';
 import { PageHeader } from '../ui/PageHeader.jsx';
 import { CustomConfirmModal } from '../ui/ConfirmModal.jsx';
 import { Icons } from '../core/icons.jsx';
@@ -100,9 +100,9 @@ export const IncomeTab = ({
                     discount: t.discountAmount || 0,
                     title: serviceNames || 'Hizmet',
                     plate: cust?.plate || snap?.plate || '',
-                    customerName: cust?.name || snap?.name || (t.customerId === 'ANONIM_MUSTERI' ? 'Anonim Müşteri' : 'Misafir'),
+                    customerName: cust?.name || snap?.name || (t.customerId === ANONYMOUS_CUSTOMER_ID ? 'Anonim Müşteri' : 'Misafir'),
                     isLoyaltyReward: !!t.isLoyaltyReward,
-                    paymentMethod: t.isLoyaltyReward ? 'reward' : (t.paymentMethod || 'cash'),
+                    paymentMethod: t.isLoyaltyReward ? LOYALTY_REWARD_PAYMENT : (t.paymentMethod || 'cash'),
                     note: t.notes || ''
                 };
             });
@@ -123,7 +123,7 @@ export const IncomeTab = ({
                 discount: 0,
                 title: `${productName} × ${s.quantity}`,
                 plate: cust?.plate || snap?.plate || '',
-                customerName: cust?.name || snap?.name || (s.customerId === 'ANONIM_MUSTERI' ? 'Anonim Müşteri' : 'Cari Müşteri'),
+                customerName: cust?.name || snap?.name || (s.customerId === ANONYMOUS_CUSTOMER_ID ? 'Anonim Müşteri' : 'Cari Müşteri'),
                 isLoyaltyReward: false,
                 paymentMethod: s.paymentMethod || 'cash',
                 note: ''
@@ -154,7 +154,7 @@ export const IncomeTab = ({
             product: 0,
             count: filteredRows.length,
             loyaltyCount: 0,
-            byPayment: { cash: 0, card: 0, transfer: 0, unpaid: 0, reward: 0 }
+            byPayment: { cash: 0, card: 0, transfer: 0, unpaid: 0, [LOYALTY_REWARD_PAYMENT]: 0 }
         };
         filteredRows.forEach(row => {
             result.total += row.amount;
@@ -449,7 +449,7 @@ export const IncomeTab = ({
                                         </td>
                                         <td className="p-3 text-center">
                                             <span className="text-[10px] bg-darkBg-deep border border-darkBg-border text-gray-300 px-2 py-0.5 rounded font-bold">
-                                                {row.paymentMethod === 'reward' ? '🎁 Ödül' : `${PAYMENT_METHODS.find(p => p.id === row.paymentMethod)?.icon || ''} ${getPaymentLabel(row.paymentMethod)}`}
+                                                {row.paymentMethod === LOYALTY_REWARD_PAYMENT ? '🎁 Ödül' : `${PAYMENT_METHODS.find(p => p.id === row.paymentMethod)?.icon || ''} ${getPaymentLabel(row.paymentMethod)}`}
                                             </span>
                                         </td>
                                         <td className="p-3 text-center">

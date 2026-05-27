@@ -9,7 +9,6 @@ import {
     clearStoredHandle,
     queryHandlePermission,
     requestHandlePermission,
-    writeJsonToHandle,
     describeHandle
 } from '../core/auto-backup.js';
 import { PageHeader } from '../ui/PageHeader.jsx';
@@ -119,19 +118,6 @@ export const BackupTab = ({
         showNotification("Tüm işlem verileri silindi. Sistem temiz başlangıç durumuna alındı.", "warning");
     };
 
-    const buildSnapshot = () => ({
-        users,
-        customers,
-        services,
-        transactions,
-        appointments,
-        expenses,
-        products,
-        sales,
-        campaigns,
-        settings
-    });
-
     const handleAutoBackupConnect = async () => {
         if (!autoSupported) {
             showNotification("Bu tarayıcı otomatik yedeklemeyi desteklemiyor. Chrome veya Edge önerilir.", "error");
@@ -143,9 +129,11 @@ export const BackupTab = ({
             setAutoHandle(handle);
             const perm = await queryHandlePermission(handle);
             setAutoPermission(perm);
-            // İlk yazımı hemen yap.
-            await writeJsonToHandle(handle, buildSnapshot());
-            setSettings(prev => ({ ...DEFAULT_SETTINGS, ...prev, last_backup_at: new Date().toISOString() }));
+            // app.jsx tarafına yeni handle'ı duyur; tek yazıcı orası.
+            window.dispatchEvent(new CustomEvent('autobackup:handle-changed', { detail: { handle } }));
+            // İlk yazımı app.jsx üzerinden tetikle (zaman damgasını ve hash'i
+            // tek noktadan günceller, çift yazımı engeller).
+            window.dispatchEvent(new CustomEvent('autobackup:write-now'));
             showNotification("Otomatik yedekleme bağlandı. Tüm değişiklikler artık dosyaya yazılacak.");
         } catch (err) {
             if (err && err.name === 'AbortError') return;
@@ -161,13 +149,9 @@ export const BackupTab = ({
         const perm = await requestHandlePermission(autoHandle);
         setAutoPermission(perm);
         if (perm === 'granted') {
-            try {
-                await writeJsonToHandle(autoHandle, buildSnapshot());
-                setSettings(prev => ({ ...DEFAULT_SETTINGS, ...prev, last_backup_at: new Date().toISOString() }));
-                showNotification("İzin yenilendi ve dosya güncellendi.");
-            } catch (err) {
-                showNotification("Dosyaya yazılamadı: " + (err?.message || 'hata'), "error");
-            }
+            // İzin alındı; yazımı app.jsx üstlensin.
+            window.dispatchEvent(new CustomEvent('autobackup:write-now'));
+            showNotification("İzin yenilendi, yedek dosyası güncelleniyor.");
         } else {
             showNotification("Yazma izni reddedildi.", "warning");
         }
@@ -177,15 +161,26 @@ export const BackupTab = ({
         if (!autoHandle) return;
         try {
             setAutoBusy(true);
-            await writeJsonToHandle(autoHandle, buildSnapshot());
-            setSettings(prev => ({ ...DEFAULT_SETTINGS, ...prev, last_backup_at: new Date().toISOString() }));
-            showNotification("Yedek dosyası güncellendi.");
-        } catch (err) {
-            if (err?.code === 'PERMISSION_REQUIRED') {
+            const result = await new Promise((resolve) => {
+                const onDone = (event) => {
+                    window.removeEventListener('autobackup:write-result', onDone);
+                    resolve(event?.detail || { success: false });
+                };
+                window.addEventListener('autobackup:write-result', onDone, { once: true });
+                window.dispatchEvent(new CustomEvent('autobackup:write-now'));
+                // Güvenlik fallback'i: 5 sn içinde sonuç gelmezse promise'i kapat.
+                setTimeout(() => {
+                    window.removeEventListener('autobackup:write-result', onDone);
+                    resolve({ success: false, error: new Error('timeout') });
+                }, 5000);
+            });
+            if (result.success) {
+                showNotification("Yedek dosyası güncellendi.");
+            } else if (result.error?.code === 'PERMISSION_REQUIRED') {
                 showNotification("Önce izni yenileyin.", "warning");
                 setAutoPermission('prompt');
-            } else {
-                showNotification("Yazma hatası: " + (err?.message || 'hata'), "error");
+            } else if (result.error) {
+                showNotification("Yazma hatası: " + (result.error.message || 'hata'), "error");
             }
         } finally {
             setAutoBusy(false);
@@ -196,6 +191,8 @@ export const BackupTab = ({
         await clearStoredHandle();
         setAutoHandle(null);
         setAutoPermission('unknown');
+        // app.jsx tarafındaki ref'i de temizle.
+        window.dispatchEvent(new CustomEvent('autobackup:handle-changed', { detail: { handle: null } }));
         showNotification("Otomatik yedekleme kaldırıldı.", "warning");
     };
 

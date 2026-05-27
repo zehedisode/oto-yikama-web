@@ -1,6 +1,6 @@
 const { useState } = React;
 
-import { parsePositiveNumber, parsePositiveInteger, formatCurrency, PAYMENT_METHODS } from '../core/app-core.js';
+import { parsePositiveNumber, parsePositiveInteger, formatCurrency, PAYMENT_METHODS, WALK_IN_CUSTOMER_ID } from '../core/app-core.js';
 import { generateUUID } from '../core/db.js';
 import { PageHeader } from '../ui/PageHeader.jsx';
 import { CustomConfirmModal } from '../ui/ConfirmModal.jsx';
@@ -120,7 +120,7 @@ export const ProductsTab = ({
             id: generateUUID(),
             productId: selectedProdId,
             productSnapshot: { name: product.name, unit: product.unit },
-            customerId: selectedCustId || 'CARI_MUSTERI',
+            customerId: selectedCustId || WALK_IN_CUSTOMER_ID,
             customerSnapshot,
             quantity,
             unitPrice: product.price,

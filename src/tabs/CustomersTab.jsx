@@ -1,6 +1,6 @@
 const { useState, useMemo } = React;
 
-import { VEHICLE_TYPES, normalizePlate, formatCurrency, computeLoyaltyStats } from '../core/app-core.js';
+import { VEHICLE_TYPES, normalizePlate, formatCurrency, computeLoyaltyStats, ANONYMOUS_CUSTOMER_ID } from '../core/app-core.js';
 import { generateUUID } from '../core/db.js';
 import { PageHeader } from '../ui/PageHeader.jsx';
 import { CustomConfirmModal } from '../ui/ConfirmModal.jsx';
@@ -194,11 +194,11 @@ export const CustomersTab = ({
 
         setCustomers(prev => prev.filter(c => c.id !== id));
         setTransactions(prev => prev.map(t => t.customerId === id
-            ? { ...t, customerId: 'ANONIM_MUSTERI', customerSnapshot: t.customerSnapshot || snapshotFromCustomer }
+            ? { ...t, customerId: ANONYMOUS_CUSTOMER_ID, customerSnapshot: t.customerSnapshot || snapshotFromCustomer }
             : t
         ));
         setSales(prev => prev.map(s => s.customerId === id
-            ? { ...s, customerId: 'ANONIM_MUSTERI', customerSnapshot: s.customerSnapshot || snapshotFromCustomer }
+            ? { ...s, customerId: ANONYMOUS_CUSTOMER_ID, customerSnapshot: s.customerSnapshot || snapshotFromCustomer }
             : s
         ));
         setAppointments(prev => prev.filter(a => a.customerId !== id));

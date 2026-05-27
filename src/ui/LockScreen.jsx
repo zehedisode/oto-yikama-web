@@ -37,14 +37,14 @@ export const LockScreen = ({ users, handleUnlock, pinError, onPinReset }) => {
         return () => clearInterval(interval);
     }, [pinError]);
 
-    // Cooldown bittiğinde PIN alanını temizle.
+    // Cooldown başladığında PIN alanını bir kez temizle.
     useEffect(() => {
-        if (cooldownMs <= 0) {
-            return undefined;
+        if (cooldownMs > 0 && pin) {
+            setPin('');
         }
-        setPin('');
-        return undefined;
-    }, [cooldownMs]);
+        // pin'i deps'e koymuyoruz; cooldown başladığında tek seferlik temizlik yeterli.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [cooldownMs > 0]);
 
     const isCoolingDown = cooldownMs > 0;
     const remainingInTier = PIN_ATTEMPT_LIMIT - (failedAttempts % PIN_ATTEMPT_LIMIT);

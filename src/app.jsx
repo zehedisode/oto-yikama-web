@@ -93,54 +93,145 @@ function App() {
     useEffect(() => { db.set(DB_KEYS.SETTINGS, settings); }, [settings]);
 
     // Otomatik dosya yedekleme: değişikliklerden sonra debounce'lu yazım.
+    // Tek yazıcı app.jsx'tir; BackupTab event'ler üzerinden tetikler.
     const autoBackupHandleRef = useRef(null);
     const autoBackupTimerRef = useRef(null);
     const autoBackupSkipFirstRef = useRef(true);
     const autoBackupWarnedRef = useRef(false);
+    // Son başarıyla yazılan veri hash'i (last_backup_at hariç). Aynı veri tekrar
+    // yazılmasın ve setSettings(last_backup_at) tetiklemesi loop oluşturmasın diye.
+    const lastWrittenHashRef = useRef(null);
 
+    // Render sırasında güncellenen veri snapshot referansı; event handler'ların
+    // güncel veriye erişebilmesi için kullanılıyor (state tek bir useEffect deps'ine
+    // bağlı kalmadan, ref üzerinden okunuyor).
+    const dataRef = useRef(null);
+    dataRef.current = { users, customers, services, transactions, appointments, expenses, products, sales, campaigns, settings };
+
+    const computeAutoBackupHash = (data) => {
+        if (!data) return '';
+        const { settings: s, ...rest } = data;
+        const settingsWithoutTimestamp = { ...s };
+        delete settingsWithoutTimestamp.last_backup_at;
+        return JSON.stringify({ ...rest, settings: settingsWithoutTimestamp });
+    };
+
+    const runAutoBackupWrite = async ({ forceImmediate = false } = {}) => {
+        const handle = autoBackupHandleRef.current;
+        if (!handle) {
+            if (forceImmediate) {
+                window.dispatchEvent(new CustomEvent('autobackup:write-result', {
+                    detail: { success: false, error: new Error('Bağlı yedek konumu yok.') }
+                }));
+            }
+            return false;
+        }
+        const data = dataRef.current;
+        if (!data) return false;
+        try {
+            const perm = await queryHandlePermission(handle);
+            if (perm !== 'granted') {
+                if (!autoBackupWarnedRef.current) {
+                    autoBackupWarnedRef.current = true;
+                    showNotification("Otomatik yedekleme: yazma izni yenilenmeli. Sistem & Yedekleme'den izin verin.", "warning");
+                }
+                if (forceImmediate) {
+                    window.dispatchEvent(new CustomEvent('autobackup:write-result', {
+                        detail: { success: false, error: Object.assign(new Error('PERMISSION_REQUIRED'), { code: 'PERMISSION_REQUIRED' }) }
+                    }));
+                }
+                return false;
+            }
+
+            const currentHash = computeAutoBackupHash(data);
+            if (!forceImmediate && currentHash === lastWrittenHashRef.current) {
+                return false;
+            }
+
+            const newTimestamp = new Date().toISOString();
+            const snapshot = {
+                users: data.users,
+                customers: data.customers,
+                services: data.services,
+                transactions: data.transactions,
+                appointments: data.appointments,
+                expenses: data.expenses,
+                products: data.products,
+                sales: data.sales,
+                campaigns: data.campaigns,
+                settings: { ...data.settings, last_backup_at: newTimestamp }
+            };
+
+            await writeJsonToHandle(handle, snapshot);
+            lastWrittenHashRef.current = currentHash;
+            autoBackupWarnedRef.current = false;
+            setSettings(prev => ({ ...prev, last_backup_at: newTimestamp }));
+
+            window.dispatchEvent(new CustomEvent('autobackup:write-result', {
+                detail: { success: true, timestamp: newTimestamp }
+            }));
+            return true;
+        } catch (err) {
+            if (err?.code !== 'PERMISSION_REQUIRED') {
+                console.warn('Otomatik yedek yazımı başarısız:', err);
+            }
+            window.dispatchEvent(new CustomEvent('autobackup:write-result', {
+                detail: { success: false, error: err }
+            }));
+            return false;
+        }
+    };
+
+    // Mount: handle yükle ve event listener'ları kur.
     useEffect(() => {
-        if (!isAutoBackupSupported()) return;
+        if (!isAutoBackupSupported()) return undefined;
         let cancelled = false;
+
         loadStoredHandle().then((handle) => {
-            if (!cancelled) autoBackupHandleRef.current = handle || null;
+            if (!cancelled) {
+                autoBackupHandleRef.current = handle || null;
+                lastWrittenHashRef.current = null;
+            }
         }).catch(() => undefined);
-        return () => { cancelled = true; };
+
+        const handleHandleChanged = (event) => {
+            const handle = event?.detail?.handle ?? null;
+            autoBackupHandleRef.current = handle;
+            lastWrittenHashRef.current = null;
+        };
+
+        const handleWriteNow = () => {
+            if (autoBackupTimerRef.current) {
+                clearTimeout(autoBackupTimerRef.current);
+                autoBackupTimerRef.current = null;
+            }
+            void runAutoBackupWrite({ forceImmediate: true });
+        };
+
+        window.addEventListener('autobackup:handle-changed', handleHandleChanged);
+        window.addEventListener('autobackup:write-now', handleWriteNow);
+
+        return () => {
+            cancelled = true;
+            window.removeEventListener('autobackup:handle-changed', handleHandleChanged);
+            window.removeEventListener('autobackup:write-now', handleWriteNow);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // Veri değişimlerinde debounce'lu otomatik yazım.
     useEffect(() => {
-        // İlk render'da yazım yapma, sadece kullanıcı değişikliklerinden sonra.
         if (autoBackupSkipFirstRef.current) {
             autoBackupSkipFirstRef.current = false;
-            return;
+            return undefined;
         }
-        if (!isAutoBackupSupported()) return;
+        if (!isAutoBackupSupported()) return undefined;
 
         if (autoBackupTimerRef.current) {
             clearTimeout(autoBackupTimerRef.current);
         }
-        autoBackupTimerRef.current = setTimeout(async () => {
-            const handle = autoBackupHandleRef.current;
-            if (!handle) return;
-            try {
-                const perm = await queryHandlePermission(handle);
-                if (perm !== 'granted') {
-                    if (!autoBackupWarnedRef.current) {
-                        autoBackupWarnedRef.current = true;
-                        showNotification("Otomatik yedekleme: yazma izni yenilenmeli. Sistem & Yedekleme'den izin verin.", "warning");
-                    }
-                    return;
-                }
-                const snapshot = {
-                    users, customers, services, transactions, appointments,
-                    expenses, products, sales, campaigns, settings
-                };
-                await writeJsonToHandle(handle, snapshot);
-                autoBackupWarnedRef.current = false;
-            } catch (err) {
-                if (err?.code !== 'PERMISSION_REQUIRED') {
-                    console.warn('Otomatik yedek yazımı başarısız:', err);
-                }
-            }
+        autoBackupTimerRef.current = setTimeout(() => {
+            void runAutoBackupWrite();
         }, 1500);
 
         return () => {
@@ -148,9 +239,13 @@ function App() {
                 clearTimeout(autoBackupTimerRef.current);
             }
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [users, customers, services, transactions, appointments, expenses, products, sales, campaigns, settings]);
 
     useEffect(() => {
+        // PIN güvenlik kapalıysa idle-lock zamanlayıcısını hiç kurma.
+        if (!settings.pin_security_enabled) return undefined;
+
         const handleActivity = () => {
             lastActiveRef.current = Date.now();
         };
@@ -162,7 +257,7 @@ function App() {
         window.addEventListener('touchstart', handleActivity);
 
         const interval = setInterval(() => {
-            if (settings.pin_security_enabled && !isLocked) {
+            if (!isLocked) {
                 const elapsed = (Date.now() - lastActiveRef.current) / 1000;
                 if (elapsed >= (settings.idle_lock_time || 60)) {
                     setIsLocked(true);
@@ -461,7 +556,6 @@ function App() {
                             expenses={expenses}
                             setExpenses={setExpenses}
                             sales={sales}
-                            products={products}
                             isSensitiveHidden={isSensitiveHidden}
                             setIsSensitiveHidden={setIsSensitiveHidden}
                             requestPinApproval={requestPinApproval}

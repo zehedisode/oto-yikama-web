@@ -1,6 +1,6 @@
 const { useState, useEffect, useMemo } = React;
 
-import { normalizePlate, validateTurkishPlate, formatCurrency, VEHICLE_TYPES, computeLoyaltyStats, PAYMENT_METHODS } from '../core/app-core.js';
+import { normalizePlate, validateTurkishPlate, formatCurrency, VEHICLE_TYPES, computeLoyaltyStats, PAYMENT_METHODS, LOYALTY_REWARD_PAYMENT } from '../core/app-core.js';
 import { generateUUID } from '../core/db.js';
 import { PageHeader } from '../ui/PageHeader.jsx';
 import { Icons } from '../core/icons.jsx';
@@ -213,7 +213,7 @@ export const SalesTab = ({
             totalPrice: finalPrice,
             discountAmount: isRewardRedeemed ? originalPrice : campaignDetails.discountAmount,
             campaignIds: isRewardRedeemed ? [] : campaignDetails.appliedCampaigns.map(c => c.id),
-            paymentMethod: isRewardRedeemed ? 'reward' : paymentMethod,
+            paymentMethod: isRewardRedeemed ? LOYALTY_REWARD_PAYMENT : paymentMethod,
             date: new Date().toISOString(),
             status: 'COMPLETED',
             notes: notes + (isRewardRedeemed ? ' [SADAKAT ÖDÜL KULLANIMI]' : ''),
@@ -234,7 +234,7 @@ export const SalesTab = ({
             subTotal: originalPrice,
             discount: isRewardRedeemed ? originalPrice : campaignDetails.discountAmount,
             total: finalPrice,
-            paymentMethod: isRewardRedeemed ? 'reward' : paymentMethod,
+            paymentMethod: isRewardRedeemed ? LOYALTY_REWARD_PAYMENT : paymentMethod,
             note: notes
         });
 
