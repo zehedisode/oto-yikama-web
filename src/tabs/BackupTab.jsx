@@ -1,7 +1,7 @@
 const { useEffect, useState } = React;
 
-import { DEFAULT_SETTINGS, parsePositiveInteger, hasOwn, PIN_MIN_LENGTH, PIN_MAX_LENGTH } from '../core/app-core.js';
-import { createCleanDatabase, normalizeBackupData, persistDatabaseObject } from '../core/db.js';
+import { DEFAULT_SETTINGS, parsePositiveInteger, PIN_MIN_LENGTH, PIN_MAX_LENGTH } from '../core/app-core.js';
+import { createCleanDatabase, persistDatabaseObject } from '../core/db.js';
 import {
     isAutoBackupSupported,
     loadStoredHandle,
@@ -15,8 +15,8 @@ import { PageHeader } from '../ui/PageHeader.jsx';
 import { CustomConfirmModal } from '../ui/ConfirmModal.jsx';
 import { Icons } from '../core/icons.jsx';
 
-export const BackupTab = ({ 
-    users, 
+export const BackupTab = ({
+    users,
     customers,
     services,
     transactions,
@@ -25,18 +25,18 @@ export const BackupTab = ({
     products,
     sales,
     campaigns,
-    setUsers, 
-    setCustomers, 
-    setServices, 
-    setTransactions, 
-    setAppointments, 
-    setExpenses, 
-    setProducts, 
-    setSales, 
-    setCampaigns, 
-    settings, 
-    setSettings, 
-    showNotification 
+    setUsers,
+    setCustomers,
+    setServices,
+    setTransactions,
+    setAppointments,
+    setExpenses,
+    setProducts,
+    setSales,
+    setCampaigns,
+    settings,
+    setSettings,
+    showNotification
 }) => {
     const [pinSetting, setPinSetting] = useState(users[0]?.pinCode || '1234');
     const [targetVisits, setTargetVisits] = useState(settings.loyalty_target_visits || 5);
@@ -110,63 +110,6 @@ export const BackupTab = ({
             pin_security_enabled: pinSecurityEnabled
         }));
         showNotification("Sistem ayarları başarıyla güncellendi.");
-    };
-
-    const handleExportBackup = () => {
-        const fullDbObject = {
-            users,
-            customers,
-            services,
-            transactions,
-            appointments,
-            expenses,
-            products,
-            sales,
-            campaigns,
-            settings
-        };
-
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(fullDbObject, null, 2));
-        const downloadAnchor = document.createElement('a');
-        
-        const dateStamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-        downloadAnchor.setAttribute("href", dataStr);
-        downloadAnchor.setAttribute("download", `otoyikama_yedek_${dateStamp}.json`);
-        
-        document.body.appendChild(downloadAnchor);
-        downloadAnchor.click();
-        downloadAnchor.remove();
-
-        setSettings(prev => ({ ...DEFAULT_SETTINGS, ...prev, last_backup_at: new Date().toISOString() }));
-        showNotification("Veritabanı yedeği dışa aktarıldı!");
-    };
-
-    const handleImportBackup = (e) => {
-        const fileReader = new FileReader();
-        const file = e.target.files[0];
-
-        if (!file) return;
-
-        fileReader.onload = (event) => {
-            try {
-                const parsedData = JSON.parse(event.target.result);
-                const knownKeys = ['users', 'customers', 'services', 'transactions', 'appointments', 'expenses', 'products', 'sales', 'campaigns', 'settings'];
-                const hasKnownKey = parsedData && typeof parsedData === 'object' && knownKeys.some(k => hasOwn(parsedData, k));
-
-                if (!hasKnownKey) {
-                    showNotification("Hata: Geçersiz yedek dosyası şeması!", "error");
-                    return;
-                }
-
-                applyDatabaseState(normalizeBackupData(parsedData));
-
-                showNotification("Tüm yedekler geri yüklendi!");
-            } catch (err) {
-                showNotification("Dosya okuma/çözümleme hatası!", "error");
-            }
-        };
-
-        fileReader.readAsText(file);
     };
 
     const clearDatabaseCompletely = () => {
@@ -257,7 +200,7 @@ export const BackupTab = ({
 
     return (
         <div className="space-y-6 text-left">
-            <CustomConfirmModal 
+            <CustomConfirmModal
                 isOpen={resetConfirm}
                 title="Veritabanını Tamamen Sıfırla?"
                 message="DİKKAT! Tüm veritabanını sıfırlamak ve tüm verileri silmek istediğinize emin misiniz? Bu işlem kesinlikle geri alınamaz."
@@ -267,47 +210,10 @@ export const BackupTab = ({
 
             <PageHeader
                 title="Sistem Yedekleme & Ayarlar"
-                description="Yerel yedekler oluşturun, geri yükleyin ve erişim parametrelerini yapılandırın."
+                description="Otomatik yedekleme bağlantısını yönetin ve erişim parametrelerini yapılandırın."
             />
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs text-left">
-                <div className="bg-darkBg-card border border-darkBg-border rounded-xl p-5 shadow space-y-4">
-                    <h3 className="text-sm font-bold text-gray-200 flex items-center space-x-2">
-                        <Icons.Database />
-                        <span>Veri Yedekleme ve Kurtarma (JSON)</span>
-                    </h3>
-                    <p className="text-xs text-gray-400">
-                        Sunucusuz yerel altyapıda verileriniz yalnızca tarayıcınızda yaşar. Bilgisayarınızı değiştirirken veya her günün sonunda yedek dosyasını mutlaka bilgisayarınıza indirin.
-                    </p>
-
-                    <div className="space-y-4 pt-2">
-                        <div>
-                            <h4 className="font-bold text-white mb-2">1. Yedeği İndir (Dışa Aktar)</h4>
-                            <button 
-                                type="button"
-                                onClick={handleExportBackup}
-                                className="w-full bg-brand-600 hover:bg-brand-500 text-white font-bold py-2.5 rounded transition text-center"
-                            >
-                                Yedek JSON Dosyasını İndir (.json)
-                            </button>
-                        </div>
-
-                        <div className="border-t border-darkBg-border pt-4">
-                            <h4 className="font-bold text-white mb-2">2. Yedeği Geri Yükle (İçe Aktar)</h4>
-                            <label className="block w-full text-center border border-dashed border-gray-700 bg-darkBg-deep rounded p-4 hover:border-brand-500 cursor-pointer transition">
-                                <span className="text-xs text-gray-400 block mb-1">JSON Uzantılı Yedek Dosyasını Seçin</span>
-                                <input 
-                                    type="file" 
-                                    accept=".json" 
-                                    onChange={handleImportBackup}
-                                    className="hidden" 
-                                />
-                                <span className="bg-brand-500/20 text-brand-300 font-bold py-1 px-3 rounded text-[10px] inline-block mt-1">Dosya Seç</span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
+            <div className="grid grid-cols-1 gap-6 text-xs text-left">
                 <div className="bg-darkBg-card border border-emerald-500/30 rounded-xl p-5 shadow space-y-4">
                     <div className="flex items-start justify-between gap-2">
                         <div>
@@ -331,7 +237,7 @@ export const BackupTab = ({
                     {!autoSupported && (
                         <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/30 rounded p-3 text-amber-200 text-[11px]">
                             <span className="shrink-0 mt-0.5"><Icons.AlertTriangle /></span>
-                            <span>Bu tarayıcı File System Access API'sini desteklemiyor. Otomatik yedekleme için <b>Chrome</b> veya <b>Edge</b> kullanın. Manuel yedekleme yine sol kartta çalışıyor.</span>
+                            <span>Bu tarayıcı File System Access API'sini desteklemiyor. Otomatik yedekleme için <b>Chrome</b> veya <b>Edge</b> kullanın.</span>
                         </div>
                     )}
 
@@ -378,7 +284,7 @@ export const BackupTab = ({
                                     </span>
                                 </div>
                                 <p className="text-[10px] text-gray-500 leading-snug pt-1 border-t border-darkBg-border/60 mt-1">
-                                    Tarayıcı güvenlik kuralları gereği tam dosya yolu gösterilemez. Konumu değiştirmek için aşağıdaki <span className="text-brand-300 font-bold">Konumu Değiştir</span> butonunu kullanın.
+                                    Tarayıcı güvenlik kuralları gereği tam dosya yolu gösterilemez. Konumu değiştirmek için <span className="text-brand-300 font-bold">Bağlantıyı Kaldır</span>'a basıp yeni bir konum bağlayabilirsiniz.
                                 </p>
                             </div>
 
@@ -403,20 +309,12 @@ export const BackupTab = ({
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={handleAutoBackupConnect}
-                                    disabled={autoBusy}
-                                    className="bg-darkBg-deep hover:bg-darkBg-border border border-brand-500/40 text-brand-300 font-bold py-2 rounded transition disabled:opacity-60"
+                                    onClick={handleAutoBackupDisconnect}
+                                    className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-bold py-2 rounded transition"
                                 >
-                                    Konumu Değiştir
+                                    Bağlantıyı Kaldır
                                 </button>
                             </div>
-                            <button
-                                type="button"
-                                onClick={handleAutoBackupDisconnect}
-                                className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-bold py-2 rounded transition"
-                            >
-                                Bağlantıyı Kaldır
-                            </button>
                         </div>
                     )}
                 </div>
@@ -447,20 +345,20 @@ export const BackupTab = ({
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">
                                 <label className="text-gray-400 block font-semibold">Sadakat Hediye Hedefi</label>
-                                <input 
-                                    type="number" 
-                                    value={targetVisits} 
+                                <input
+                                    type="number"
+                                    value={targetVisits}
                                     onChange={(e) => setTargetVisits(e.target.value)}
-                                    className="w-full bg-darkBg-deep border border-darkBg-border p-2 rounded text-white" 
+                                    className="w-full bg-darkBg-deep border border-darkBg-border p-2 rounded text-white"
                                 />
                             </div>
                             <div className="space-y-1">
                                 <label className="text-gray-400 block font-semibold">Kilitleme Süresi (Saniye)</label>
-                                <input 
-                                    type="number" 
-                                    value={idleTime} 
+                                <input
+                                    type="number"
+                                    value={idleTime}
                                     onChange={(e) => setIdleTime(e.target.value)}
-                                    className="w-full bg-darkBg-deep border border-darkBg-border p-2 rounded text-white" 
+                                    className="w-full bg-darkBg-deep border border-darkBg-border p-2 rounded text-white"
                                 />
                             </div>
                         </div>
@@ -478,7 +376,7 @@ export const BackupTab = ({
                             />
                         </label>
 
-                        <button 
+                        <button
                             type="submit"
                             className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded transition"
                         >
@@ -488,7 +386,7 @@ export const BackupTab = ({
 
                     <div className="border-t border-darkBg-border pt-4">
                         <h4 className="font-bold text-red-400 mb-2">Tehlikeli Bölge</h4>
-                        <button 
+                        <button
                             type="button"
                             onClick={() => setResetConfirm(true)}
                             className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold py-2 rounded transition"
