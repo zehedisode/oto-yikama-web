@@ -9,7 +9,8 @@ import {
     clearStoredHandle,
     queryHandlePermission,
     requestHandlePermission,
-    writeJsonToHandle
+    writeJsonToHandle,
+    describeHandle
 } from '../core/auto-backup.js';
 import { PageHeader } from '../ui/PageHeader.jsx';
 import { CustomConfirmModal } from '../ui/ConfirmModal.jsx';
@@ -247,9 +248,9 @@ export const BackupTab = ({
                                 <p className="text-[11px] text-gray-300 font-bold">Nasıl çalışır?</p>
                                 <ol className="text-[11px] text-gray-400 list-decimal list-inside space-y-0.5">
                                     <li>Aşağıdaki butona tıklayın</li>
-                                    <li>OneDrive/Drive/USB klasörünüzü seçin</li>
-                                    <li>Bir dosya adı verin (varsayılan otomatik gelir)</li>
-                                    <li>Bittiniz. Her değişiklikte dosya yenilenir.</li>
+                                    <li>OneDrive / Drive / USB klasörünüzü seçin</li>
+                                    <li>İçine <span className="text-brand-300 font-bold">zehedisode_yedek.json</span> dosyası otomatik oluşur</li>
+                                    <li>Her değişiklikte aynı dosya sessizce güncellenir</li>
                                 </ol>
                             </div>
                             <button
@@ -259,34 +260,49 @@ export const BackupTab = ({
                                 className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold py-2.5 rounded transition flex items-center justify-center gap-2"
                             >
                                 <Icons.Plus />
-                                <span>{autoBusy ? 'Bağlanıyor...' : 'Yedek Konumu Bağla'}</span>
+                                <span>{autoBusy ? 'Bağlanıyor...' : 'Yedek Klasörü Bağla'}</span>
                             </button>
                         </div>
                     )}
 
                     {autoSupported && autoHandle && (
                         <div className="space-y-2">
-                            <div className="bg-darkBg-deep border border-darkBg-border rounded p-3 space-y-1">
-                                <div className="flex justify-between items-start gap-2 text-[11px]">
-                                    <span className="text-gray-400 shrink-0">Yedek dosyası:</span>
-                                    <span className="text-emerald-300 font-bold truncate text-right" title={autoHandle.name}>{autoHandle.name || '—'}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-[11px]">
-                                    <span className="text-gray-400">Son yazım:</span>
-                                    <span className="text-gray-200 font-bold">
-                                        {settings.last_backup_at ? new Date(settings.last_backup_at).toLocaleString('tr-TR') : '—'}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between items-center text-[11px]">
-                                    <span className="text-gray-400">Durum:</span>
-                                    <span className={`font-bold ${autoPermission === 'granted' ? 'text-emerald-400' : 'text-amber-400'}`}>
-                                        {autoPermission === 'granted' ? 'İzin verildi' : autoPermission === 'prompt' ? 'İzin yenilenmeli' : autoPermission === 'denied' ? 'İzin reddedildi' : 'Bilinmiyor'}
-                                    </span>
-                                </div>
-                                <p className="text-[10px] text-gray-500 leading-snug pt-1 border-t border-darkBg-border/60 mt-1">
-                                    Tarayıcı güvenlik kuralları gereği tam dosya yolu gösterilemez. Konumu değiştirmek için <span className="text-brand-300 font-bold">Bağlantıyı Kaldır</span>'a basıp yeni bir konum bağlayabilirsiniz.
-                                </p>
-                            </div>
+                            {(() => {
+                                const info = describeHandle(autoHandle);
+                                return (
+                                    <div className="bg-darkBg-deep border border-darkBg-border rounded p-3 space-y-1">
+                                        {info.folderName && (
+                                            <div className="flex justify-between items-start gap-2 text-[11px]">
+                                                <span className="text-gray-400 shrink-0">Klasör:</span>
+                                                <span className="text-emerald-300 font-bold truncate text-right" title={info.folderName}>
+                                                    {info.folderName}
+                                                </span>
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between items-start gap-2 text-[11px]">
+                                            <span className="text-gray-400 shrink-0">Yedek dosyası:</span>
+                                            <span className="text-emerald-300 font-bold truncate text-right" title={info.fileName || ''}>
+                                                {info.fileName || '—'}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-[11px]">
+                                            <span className="text-gray-400">Son yazım:</span>
+                                            <span className="text-gray-200 font-bold">
+                                                {settings.last_backup_at ? new Date(settings.last_backup_at).toLocaleString('tr-TR') : '—'}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-[11px]">
+                                            <span className="text-gray-400">Durum:</span>
+                                            <span className={`font-bold ${autoPermission === 'granted' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                                {autoPermission === 'granted' ? 'İzin verildi' : autoPermission === 'prompt' ? 'İzin yenilenmeli' : autoPermission === 'denied' ? 'İzin reddedildi' : 'Bilinmiyor'}
+                                            </span>
+                                        </div>
+                                        <p className="text-[10px] text-gray-500 leading-snug pt-1 border-t border-darkBg-border/60 mt-1">
+                                            Tarayıcı güvenlik kuralları gereği tam disk yolu (C:\\...) gösterilemez. {info.kind === 'directory' ? 'Klasör adı seçtiğiniz konumla eşleşir.' : 'Eski sürümden devreden tek dosya bağlantısı; yeni klasör bağlamak için Bağlantıyı Kaldır.'}
+                                        </p>
+                                    </div>
+                                );
+                            })()}
 
                             {autoPermission !== 'granted' && (
                                 <button
