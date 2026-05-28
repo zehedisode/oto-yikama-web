@@ -285,7 +285,7 @@ export const BackupTab = ({
                                         <div className="flex justify-between items-center text-[11px]">
                                             <span className="text-gray-400">Son yazım:</span>
                                             <span className="text-gray-200 font-bold">
-                                                {settings.last_backup_at ? new Date(settings.last_backup_at).toLocaleString('tr-TR') : '—'}
+                                                {formatDateTime(settings.last_backup_at)}
                                             </span>
                                         </div>
                                         <div className="flex justify-between items-center text-[11px]">

@@ -1,6 +1,7 @@
 const { useState, useMemo } = React;
 
 import { parsePositiveNumber, formatCurrency } from '../core/app-core.js';
+import { formatDate } from '../core/format.js';
 import { generateUUID } from '../core/db.js';
 import { PageHeader } from '../ui/PageHeader.jsx';
 import { Modal } from '../ui/Modal.jsx';
@@ -176,7 +177,7 @@ export const FinanceTab = ({
                             <tbody>
                                 {filteredExpenses.map(exp => (
                                     <tr key={exp.id}>
-                                        <td className="font-mono-num">{new Date(exp.date).toLocaleDateString('tr-TR')}</td>
+                                        <td className="font-mono-num">{formatDate(exp.date)}</td>
                                         <td><span className="pill pill-rose">{exp.category}</span></td>
                                         <td className="text-gray-200 font-medium">{exp.description || 'Masraf kaydı'}</td>
                                         <td className="text-right font-mono-num font-extrabold text-rose-300">{formatCurrency(exp.amount)}</td>

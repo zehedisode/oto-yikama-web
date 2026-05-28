@@ -1,5 +1,6 @@
 import { DEFAULT_SETTINGS, createEmptyPinGate } from './core/app-core.js';
 import { db, DB_KEYS } from './core/db.js';
+import { usePersistentState } from './core/use-persistent-state.js';
 import { Icons } from './core/icons.jsx';
 import {
     recordFailedPinAttempt,
@@ -49,16 +50,18 @@ const NAV_ITEMS = [
 
 function App() {
     const [activeTab, setActiveTab] = useState('dashboard');
-    const [users, setUsers] = useState(() => db.get(DB_KEYS.USERS));
-    const [customers, setCustomers] = useState(() => db.get(DB_KEYS.CUSTOMERS));
-    const [services, setServices] = useState(() => db.get(DB_KEYS.SERVICES));
-    const [transactions, setTransactions] = useState(() => db.get(DB_KEYS.TRANSACTIONS));
-    const [appointments, setAppointments] = useState(() => db.get(DB_KEYS.APPOINTMENTS));
-    const [expenses, setExpenses] = useState(() => db.get(DB_KEYS.EXPENSES));
-    const [products, setProducts] = useState(() => db.get(DB_KEYS.PRODUCTS));
-    const [sales, setSales] = useState(() => db.get(DB_KEYS.SALES));
-    const [campaigns, setCampaigns] = useState(() => db.get(DB_KEYS.CAMPAIGNS));
-    const [settings, setSettings] = useState(() => db.get(DB_KEYS.SETTINGS, DEFAULT_SETTINGS));
+    // Tüm domain state'leri tek hook üzerinden persistlenir; mount'ta localStorage'dan okunur,
+    // değişimde aynı anahtara yazılır. db.get'in default'u ile aynı semantiği korur.
+    const [users, setUsers] = usePersistentState(DB_KEYS.USERS);
+    const [customers, setCustomers] = usePersistentState(DB_KEYS.CUSTOMERS);
+    const [services, setServices] = usePersistentState(DB_KEYS.SERVICES);
+    const [transactions, setTransactions] = usePersistentState(DB_KEYS.TRANSACTIONS);
+    const [appointments, setAppointments] = usePersistentState(DB_KEYS.APPOINTMENTS);
+    const [expenses, setExpenses] = usePersistentState(DB_KEYS.EXPENSES);
+    const [products, setProducts] = usePersistentState(DB_KEYS.PRODUCTS);
+    const [sales, setSales] = usePersistentState(DB_KEYS.SALES);
+    const [campaigns, setCampaigns] = usePersistentState(DB_KEYS.CAMPAIGNS);
+    const [settings, setSettings] = usePersistentState(DB_KEYS.SETTINGS, DEFAULT_SETTINGS);
     
     // Sayfa ilk yüklendiğinde PIN güvenliği aktifse panel kilitli başlar; refresh attack'a karşı koruma.
     const [isLocked, setIsLocked] = useState(() => {
@@ -81,16 +84,7 @@ function App() {
         setTimeout(() => setNotification(null), 4000);
     };
 
-    useEffect(() => { db.set(DB_KEYS.USERS, users); }, [users]);
-    useEffect(() => { db.set(DB_KEYS.CUSTOMERS, customers); }, [customers]);
-    useEffect(() => { db.set(DB_KEYS.SERVICES, services); }, [services]);
-    useEffect(() => { db.set(DB_KEYS.TRANSACTIONS, transactions); }, [transactions]);
-    useEffect(() => { db.set(DB_KEYS.APPOINTMENTS, appointments); }, [appointments]);
-    useEffect(() => { db.set(DB_KEYS.EXPENSES, expenses); }, [expenses]);
-    useEffect(() => { db.set(DB_KEYS.PRODUCTS, products); }, [products]);
-    useEffect(() => { db.set(DB_KEYS.SALES, sales); }, [sales]);
-    useEffect(() => { db.set(DB_KEYS.CAMPAIGNS, campaigns); }, [campaigns]);
-    useEffect(() => { db.set(DB_KEYS.SETTINGS, settings); }, [settings]);
+    // Persist effect'leri usePersistentState içine taşındı.
 
     // Otomatik dosya yedekleme: değişikliklerden sonra debounce'lu yazım.
     // Tek yazıcı app.jsx'tir; BackupTab event'ler üzerinden tetikler.

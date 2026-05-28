@@ -1,6 +1,9 @@
 const { useState, useMemo } = React;
 
 import { formatCurrency, PAYMENT_METHODS, getPaymentLabel, LOYALTY_REWARD_PAYMENT, ANONYMOUS_CUSTOMER_ID } from '../core/app-core.js';
+import { formatDateTime, formatDate } from '../core/format.js';
+import { RANGE_OPTIONS, isWithinRange } from '../core/date-range.js';
+import { useEntityMap } from '../core/lookups.js';
 import { PageHeader } from '../ui/PageHeader.jsx';
 import { StatTile } from '../ui/StatTile.jsx';
 import { CustomConfirmModal } from '../ui/ConfirmModal.jsx';
@@ -11,30 +14,6 @@ const FILTERS = [
     { id: 'service', label: 'Hizmet' },
     { id: 'product', label: 'Ürün' }
 ];
-
-const RANGE_OPTIONS = [
-    { id: 'today', label: 'Bugün' },
-    { id: '7d', label: 'Son 7 Gün' },
-    { id: '30d', label: 'Son 30 Gün' },
-    { id: 'all', label: 'Tümü' }
-];
-
-const startOfDay = (d) => {
-    const x = new Date(d);
-    x.setHours(0, 0, 0, 0);
-    return x;
-};
-
-const isWithinRange = (dateStr, rangeId) => {
-    if (rangeId === 'all') return true;
-    const d = new Date(dateStr);
-    const today = startOfDay(new Date());
-    if (rangeId === 'today') return startOfDay(d).getTime() === today.getTime();
-    const days = rangeId === '7d' ? 7 : 30;
-    const threshold = new Date(today);
-    threshold.setDate(threshold.getDate() - (days - 1));
-    return d >= threshold;
-};
 
 const escapeCsv = (value) => {
     const str = String(value ?? '');
@@ -64,23 +43,9 @@ export const IncomeTab = ({
     const [paymentFilter, setPaymentFilter] = useState('all');
     const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, row: null });
 
-    const customerMap = useMemo(() => {
-        const map = new Map();
-        customers.forEach(c => map.set(c.id, c));
-        return map;
-    }, [customers]);
-
-    const serviceMap = useMemo(() => {
-        const map = new Map();
-        services.forEach(s => map.set(s.id, s));
-        return map;
-    }, [services]);
-
-    const productMap = useMemo(() => {
-        const map = new Map();
-        products.forEach(p => map.set(p.id, p));
-        return map;
-    }, [products]);
+    const customerMap = useEntityMap(customers);
+    const serviceMap = useEntityMap(services);
+    const productMap = useEntityMap(products);
 
     const incomeRows = useMemo(() => {
         const serviceRows = transactions
@@ -205,7 +170,7 @@ export const IncomeTab = ({
         const lines = [header.join(';')];
         filteredRows.forEach(row => {
             lines.push([
-                new Date(row.date).toLocaleString('tr-TR'),
+                formatDateTime(row.date),
                 row.kind === 'service' ? 'Hizmet' : 'Ürün',
                 row.plate,
                 row.customerName,
@@ -382,7 +347,7 @@ export const IncomeTab = ({
                                     <tr key={row.id} className="hover:bg-darkBg-hover">
                                         <td className="p-3 whitespace-nowrap">
                                             <span className="block text-gray-200 font-semibold">
-                                                {new Date(row.date).toLocaleDateString('tr-TR')}
+                                                {formatDate(row.date)}
                                             </span>
                                             <span className="block text-[10px] text-gray-500">
                                                 {new Date(row.date).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}

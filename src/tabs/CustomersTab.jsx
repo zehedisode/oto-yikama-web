@@ -1,6 +1,7 @@
 const { useState, useMemo } = React;
 
 import { VEHICLE_TYPES, normalizePlate, formatCurrency, computeLoyaltyStats, ANONYMOUS_CUSTOMER_ID } from '../core/app-core.js';
+import { formatDateTime, formatDate } from '../core/format.js';
 import { generateUUID } from '../core/db.js';
 import { PageHeader } from '../ui/PageHeader.jsx';
 import { CustomConfirmModal } from '../ui/ConfirmModal.jsx';
@@ -587,7 +588,7 @@ const HistoryModal = ({ customer, transactions, services, sales, products, stats
                                     <div key={tr.id} className={`bg-darkBg-deep border rounded-lg p-3 text-xs flex justify-between items-start gap-3 ${tr.isLoyaltyReward ? 'border-emerald-500/30' : 'border-darkBg-border'}`}>
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center gap-2 flex-wrap">
-                                                <span className="text-[10px] text-gray-500">{new Date(tr.date).toLocaleString('tr-TR')}</span>
+                                                <span className="text-[10px] text-gray-500">{formatDateTime(tr.date)}</span>
                                                 {tr.isLoyaltyReward && (
                                                     <span className="text-[9px] bg-emerald-500/15 text-emerald-300 px-1.5 py-0.5 rounded font-extrabold flex items-center gap-1">
                                                         <Icons.Gift /> ÖDÜL
@@ -625,7 +626,7 @@ const HistoryModal = ({ customer, transactions, services, sales, products, stats
                                     <div key={s.id} className="bg-darkBg-deep border border-darkBg-border rounded-lg p-3 text-xs flex justify-between items-center">
                                         <div>
                                             <p className="font-bold text-gray-200">{prod?.name || 'Ürün'} × {s.quantity}</p>
-                                            <span className="text-[10px] text-gray-500">{new Date(s.date).toLocaleDateString('tr-TR')}</span>
+                                            <span className="text-[10px] text-gray-500">{formatDate(s.date)}</span>
                                         </div>
                                         <span className="font-extrabold text-emerald-400">{formatCurrency(s.totalPrice)}</span>
                                     </div>

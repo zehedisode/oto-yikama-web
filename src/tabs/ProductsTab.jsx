@@ -1,6 +1,7 @@
 const { useState, useMemo } = React;
 
 import { parsePositiveNumber, parsePositiveInteger, formatCurrency, PAYMENT_METHODS, WALK_IN_CUSTOMER_ID } from '../core/app-core.js';
+import { formatDate } from '../core/format.js';
 import { generateUUID } from '../core/db.js';
 import { PageHeader } from '../ui/PageHeader.jsx';
 import { Modal } from '../ui/Modal.jsx';
@@ -293,7 +294,7 @@ export const ProductsTab = ({ products, setProducts, sales, setSales, customers,
                                     <div className="flex items-center gap-3 shrink-0">
                                         <div className="text-right">
                                             <span className="font-mono-num font-bold text-emerald-300 block">{formatCurrency(s.totalPrice)}</span>
-                                            <span className="text-[9px] text-gray-500 font-mono-num">{new Date(s.date).toLocaleDateString('tr-TR')}</span>
+                                            <span className="text-[9px] text-gray-500 font-mono-num">{formatDate(s.date)}</span>
                                         </div>
                                         <button
                                             type="button"

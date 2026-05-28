@@ -5,7 +5,7 @@
  *   - Yeni sürüm yayınlandığında CACHE_VERSION artırılarak eski cache temizlenir.
  */
 
-const CACHE_VERSION = 'zehedisode-27f83bf644';
+const CACHE_VERSION = 'zehedisode-99c8e34a70';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 

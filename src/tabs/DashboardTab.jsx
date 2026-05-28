@@ -1,6 +1,7 @@
 const { useMemo, useState } = React;
 
 import { VEHICLE_TYPES, normalizePlate, formatCurrency, computeLoyaltyStats } from '../core/app-core.js';
+import { formatDateTime } from '../core/format.js';
 import { PageHeader } from '../ui/PageHeader.jsx';
 import { CustomFinanceChart } from '../ui/FinanceChart.jsx';
 import { Icons } from '../core/icons.jsx';
@@ -333,7 +334,7 @@ export const DashboardTab = ({
                                         <div>
                                             <span className="plate-chip mr-2">{cust?.plate || 'BELİRSİZ'}</span>
                                             <span className="text-gray-200 font-medium">{cust?.name || 'Misafir'}</span>
-                                            <span className="text-gray-500 block text-[10px] mt-0.5 font-mono-num">{new Date(tr.date).toLocaleString('tr-TR')}</span>
+                                            <span className="text-gray-500 block text-[10px] mt-0.5 font-mono-num">{formatDateTime(tr.date)}</span>
                                         </div>
                                         <div className="text-right">
                                             <span className={`font-mono-num font-bold block ${isSensitiveHidden ? 'blur-sm select-none' : 'text-emerald-300'}`}>
