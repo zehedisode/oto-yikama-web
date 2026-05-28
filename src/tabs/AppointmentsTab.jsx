@@ -1,26 +1,11 @@
 const { useState, useMemo } = React;
 
 import { normalizePlate, VEHICLE_TYPES, APPOINTMENT_STATUS } from '../core/app-core.js';
+import { formatDateTime, formatRelative } from '../core/format.js';
 import { generateUUID } from '../core/db.js';
 import { PageHeader } from '../ui/PageHeader.jsx';
 import { Modal } from '../ui/Modal.jsx';
 import { Icons } from '../core/icons.jsx';
-
-const formatDateTime = (iso) => {
-    try { return new Date(iso).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' }); }
-    catch { return ''; }
-};
-
-const formatRelative = (iso) => {
-    const target = new Date(iso).getTime();
-    if (!Number.isFinite(target)) return '';
-    const diffMin = Math.round((target - Date.now()) / 60000);
-    if (Math.abs(diffMin) < 60) return diffMin === 0 ? 'şimdi' : (diffMin > 0 ? `${diffMin} dk sonra` : `${-diffMin} dk önce`);
-    const diffH = Math.round(diffMin / 60);
-    if (Math.abs(diffH) < 24) return diffH > 0 ? `${diffH} sa sonra` : `${-diffH} sa önce`;
-    const diffD = Math.round(diffH / 24);
-    return diffD > 0 ? `${diffD} gün sonra` : `${-diffD} gün önce`;
-};
 
 const ColumnHeader = ({ label, count, accent }) => {
     const dotClass = `status-dot status-dot-${accent}`;

@@ -110,7 +110,9 @@ export const computeLoyaltyStats = (customerId, transactions, target = 5) => {
     const completed = transactions.filter(
         (t) => t && t.customerId === customerId && t.status === 'COMPLETED'
     );
-    const paidVisits = completed.filter((t) => !t.isLoyaltyReward).length;
+    // Ücretli ziyaret: ödül kullanımı değil VE 0 ₺'den büyük tahsilat.
+    // Bu sayede manuel "ücretsiz" / "0 ₺" kayıtları sadakat sayacına girmez.
+    const paidVisits = completed.filter((t) => !t.isLoyaltyReward && (Number(t.totalPrice) || 0) > 0).length;
     const rewardVisits = completed.filter((t) => t.isLoyaltyReward).length;
 
     const earnedRewards = Math.floor(paidVisits / safeTarget);

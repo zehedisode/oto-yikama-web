@@ -73,6 +73,7 @@ export const CustomersTab = ({
 
     const [viewHistoryCust, setViewHistoryCust] = useState(null);
     const [editCustomer, setEditCustomer] = useState(null);
+    const [editMode, setEditMode] = useState('edit'); // 'edit' | 'new'
     const [editName, setEditName] = useState('');
     const [editPhone, setEditPhone] = useState('');
     const [editPlate, setEditPlate] = useState('');
@@ -149,14 +150,25 @@ export const CustomersTab = ({
 
     const openEditCustomer = (customer) => {
         setEditCustomer(customer);
+        setEditMode('edit');
         setEditName(customer.name || '');
         setEditPhone(customer.phone || '');
         setEditPlate(customer.plate || '');
         setEditVehicleType(customer.vehicleType || 'SEDAN');
     };
 
+    const openNewCustomer = () => {
+        setEditCustomer({ id: 'new' });
+        setEditMode('new');
+        setEditName('');
+        setEditPhone('');
+        setEditPlate('');
+        setEditVehicleType('SEDAN');
+    };
+
     const closeEditCustomer = () => {
         setEditCustomer(null);
+        setEditMode('edit');
         setEditName('');
         setEditPhone('');
         setEditPlate('');
@@ -170,19 +182,34 @@ export const CustomersTab = ({
             showNotification("Müşteri adı ve plaka zorunludur.", "error");
             return;
         }
-        const hasDuplicatePlate = customers.some(c => c.id !== editCustomer.id && normalizePlate(c.plate) === cleanPlate);
+        const targetId = editMode === 'new' ? null : editCustomer.id;
+        const hasDuplicatePlate = customers.some(c => c.id !== targetId && normalizePlate(c.plate) === cleanPlate);
         if (hasDuplicatePlate) {
             showNotification("Bu plaka başka bir müşteri kaydında kullanılıyor.", "error");
             return;
         }
-        setCustomers(prev => prev.map(c => c.id === editCustomer.id ? {
-            ...c,
-            name: editName.trim(),
-            phone: editPhone.trim() || 'Belirtilmedi',
-            plate: cleanPlate,
-            vehicleType: editVehicleType
-        } : c));
-        showNotification("Müşteri kartı güncellendi.");
+
+        if (editMode === 'new') {
+            const newCust = {
+                id: generateUUID(),
+                plate: cleanPlate,
+                name: editName.trim(),
+                phone: editPhone.trim() || 'Belirtilmedi',
+                vehicleType: editVehicleType,
+                createdAt: new Date().toISOString()
+            };
+            setCustomers(prev => [...prev, newCust]);
+            showNotification("Yeni müşteri kartı oluşturuldu (0 yıkama).");
+        } else {
+            setCustomers(prev => prev.map(c => c.id === editCustomer.id ? {
+                ...c,
+                name: editName.trim(),
+                phone: editPhone.trim() || 'Belirtilmedi',
+                plate: cleanPlate,
+                vehicleType: editVehicleType
+            } : c));
+            showNotification("Müşteri kartı güncellendi.");
+        }
         closeEditCustomer();
     };
 
@@ -233,16 +260,26 @@ export const CustomersTab = ({
                 title="Müşteri Portföyü (CRM)"
                 description={`Sadakat hedefi: her ${loyaltyTarget} ücretli yıkama sonrası 1 bedava yıkama.`}
                 actions={
-                    showOnlyReady && (
+                    <>
+                        {showOnlyReady && (
+                            <button
+                                type="button"
+                                onClick={() => setShowOnlyReady(false)}
+                                className="px-3 py-1.5 bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 rounded-lg text-xs font-semibold hover:bg-emerald-600/30 transition flex items-center gap-2"
+                            >
+                                <Icons.X />
+                                <span>Filtreyi Kaldır</span>
+                            </button>
+                        )}
                         <button
                             type="button"
-                            onClick={() => setShowOnlyReady(false)}
-                            className="px-3 py-1.5 bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 rounded-lg text-xs font-semibold hover:bg-emerald-600/30 transition flex items-center gap-2"
+                            onClick={openNewCustomer}
+                            className="btn btn-primary"
                         >
-                            <Icons.X />
-                            <span>Filtreyi Kaldır</span>
+                            <Icons.Plus />
+                            <span>Yeni Müşteri</span>
                         </button>
-                    )
+                    </>
                 }
             />
 
@@ -421,8 +458,14 @@ export const CustomersTab = ({
                     <div className="w-full max-w-md bg-darkBg-card border border-darkBg-border rounded-2xl p-6 shadow-2xl space-y-4">
                         <div className="flex justify-between items-center border-b border-darkBg-border pb-2">
                             <div>
-                                <h3 className="text-base font-bold text-white">Müşteri Kartını Düzenle</h3>
-                                <p className="text-xs text-gray-400">Plaka değişikliği geçmiş işlemleri etkilemez.</p>
+                                <h3 className="text-base font-bold text-white">
+                                    {editMode === 'new' ? 'Yeni Müşteri Kaydı' : 'Müşteri Kartını Düzenle'}
+                                </h3>
+                                <p className="text-xs text-gray-400">
+                                    {editMode === 'new'
+                                        ? 'Para almadan, 0 yıkama ile direkt müşteri kartı oluşturulur.'
+                                        : 'Plaka değişikliği geçmiş işlemleri etkilemez.'}
+                                </p>
                             </div>
                             <button type="button" onClick={closeEditCustomer} className="text-gray-400 hover:text-white"><Icons.X /></button>
                         </div>
@@ -476,7 +519,7 @@ export const CustomersTab = ({
                                     Vazgeç
                                 </button>
                                 <button type="submit" className="flex-1 bg-brand-600 hover:bg-brand-500 text-white font-bold py-2.5 rounded-lg transition">
-                                    Kaydet
+                                    {editMode === 'new' ? 'Müşteriyi Kaydet' : 'Kaydet'}
                                 </button>
                             </div>
                         </form>

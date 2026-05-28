@@ -7,6 +7,7 @@ import { useEntityMap } from '../core/lookups.js';
 import { PageHeader } from '../ui/PageHeader.jsx';
 import { StatTile } from '../ui/StatTile.jsx';
 import { CustomConfirmModal } from '../ui/ConfirmModal.jsx';
+import { SensitiveLockOverlay } from '../ui/SensitiveLockOverlay.jsx';
 import { Icons } from '../core/icons.jsx';
 
 const FILTERS = [
@@ -204,28 +205,14 @@ export const IncomeTab = ({
                 onCancel={() => setDeleteConfirm({ isOpen: false, row: null })}
             />
 
-            {isSensitiveHidden && (
-                <div className="absolute inset-0 z-10 modal-backdrop flex flex-col items-center justify-center p-8 text-center rounded-2xl border border-darkBg-border">
-                    <span className="inline-flex w-12 h-12 rounded-xl bg-brand-500/15 text-brand-300 ring-1 ring-brand-500/30 items-center justify-center mb-3">
-                        <Icons.Shield />
-                    </span>
-                    <h3 className="text-lg font-extrabold text-white mb-1" style={{ fontFamily: '"Bricolage Grotesque", sans-serif' }}>
-                        Gelir Kayıtları Kilitli
-                    </h3>
-                    <p className="text-xs text-gray-400 mb-4 max-w-sm">Tüm gelir hareketlerini görmek için güvenlik PIN kodunuzu girin.</p>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            requestPinApproval("Gelir kayıtlarına erişmek için doğrulama yapın.", () => {
-                                setIsSensitiveHidden(false);
-                            });
-                        }}
-                        className="btn btn-primary"
-                    >
-                        PIN ile Kilidi Aç
-                    </button>
-                </div>
-            )}
+            <SensitiveLockOverlay
+                isHidden={isSensitiveHidden}
+                title="Gelir Kayıtları Kilitli"
+                description="Tüm gelir hareketlerini görmek için güvenlik PIN kodunuzu girin."
+                promptText="Gelir kayıtlarına erişmek için doğrulama yapın."
+                requestPinApproval={requestPinApproval}
+                onUnlock={() => setIsSensitiveHidden(false)}
+            />
 
             <PageHeader
                 title="Gelir Kayıtları"

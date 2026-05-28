@@ -37,3 +37,30 @@ export const daysBetween = (from, to = new Date()) => {
 };
 
 export const daysSince = (value) => daysBetween(value, new Date());
+
+// "şimdi", "5 dk sonra", "3 gün önce" gibi göreli ifade.
+// AppointmentsTab ve CustomersTab kendi versiyonlarını yazmasın diye buraya taşındı.
+// Pozitif değerler "sonra", negatif değerler "önce" olarak okunur.
+export const formatRelative = (value, fallback = '') => {
+    const d = toDate(value);
+    if (!d) return fallback;
+    const diffMin = Math.round((d.getTime() - Date.now()) / 60000);
+    if (Math.abs(diffMin) < 60) {
+        if (diffMin === 0) return 'şimdi';
+        return diffMin > 0 ? `${diffMin} dk sonra` : `${-diffMin} dk önce`;
+    }
+    const diffH = Math.round(diffMin / 60);
+    if (Math.abs(diffH) < 24) return diffH > 0 ? `${diffH} sa sonra` : `${-diffH} sa önce`;
+    const diffD = Math.round(diffH / 24);
+    if (Math.abs(diffD) < 7) return diffD > 0 ? `${diffD} gün sonra` : `${-diffD} gün önce`;
+    if (Math.abs(diffD) < 30) {
+        const w = Math.round(diffD / 7);
+        return w > 0 ? `${w} hafta sonra` : `${-w} hafta önce`;
+    }
+    if (Math.abs(diffD) < 365) {
+        const m = Math.round(diffD / 30);
+        return m > 0 ? `${m} ay sonra` : `${-m} ay önce`;
+    }
+    const y = Math.round(diffD / 365);
+    return y > 0 ? `${y} yıl sonra` : `${-y} yıl önce`;
+};

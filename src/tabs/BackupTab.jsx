@@ -2,6 +2,7 @@ const { useEffect, useState } = React;
 
 import { DEFAULT_SETTINGS, parsePositiveInteger, PIN_MIN_LENGTH, PIN_MAX_LENGTH } from '../core/app-core.js';
 import { createCleanDatabase, persistDatabaseObject } from '../core/db.js';
+import { formatDateTime } from '../core/format.js';
 import {
     isAutoBackupSupported,
     loadStoredHandle,

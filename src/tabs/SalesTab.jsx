@@ -1,6 +1,6 @@
 const { useState, useEffect, useMemo } = React;
 
-import { normalizePlate, validateTurkishPlate, formatCurrency, VEHICLE_TYPES, computeLoyaltyStats, PAYMENT_METHODS, LOYALTY_REWARD_PAYMENT } from '../core/app-core.js';
+import { normalizePlate, validateTurkishPlate, formatCurrency, VEHICLE_TYPES, computeLoyaltyStats, PAYMENT_METHODS, LOYALTY_REWARD_PAYMENT, parsePositiveNumber } from '../core/app-core.js';
 import { generateUUID } from '../core/db.js';
 import { PageHeader } from '../ui/PageHeader.jsx';
 import { Icons } from '../core/icons.jsx';
@@ -49,6 +49,11 @@ export const SalesTab = ({
     const [showCartMobile, setShowCartMobile] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState('cash');
     const [receipt, setReceipt] = useState(null);
+
+    // Manuel/özel tutar modu: kampanya & ödül atlanır, kullanıcının yazdığı tutar tahsil edilir.
+    // 0 ₺ kullanılırsa bu satış sadakat sayacına da girmez (computeLoyaltyStats > 0 koşulunu kullanır).
+    const [useCustomPrice, setUseCustomPrice] = useState(false);
+    const [customPrice, setCustomPrice] = useState('');
 
     // Plaka değiştikçe müşteri eşleşmesi
     useEffect(() => {
@@ -139,7 +144,9 @@ export const SalesTab = ({
         };
     }, [originalPrice, campaigns, currentVehicleType, selectedServiceIds]);
 
-    const finalPrice = isRewardRedeemed ? 0 : Math.max(0, originalPrice - campaignDetails.discountAmount);
+    const finalPrice = useCustomPrice
+        ? parsePositiveNumber(customPrice, 0)
+        : (isRewardRedeemed ? 0 : Math.max(0, originalPrice - campaignDetails.discountAmount));
 
     const toggleService = (id) => {
         setSelectedServiceIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -156,6 +163,8 @@ export const SalesTab = ({
         setServiceSearch('');
         setShowCartMobile(false);
         setPaymentMethod('cash');
+        setUseCustomPrice(false);
+        setCustomPrice('');
     };
 
     const handleSaveCheckout = () => {
@@ -167,7 +176,7 @@ export const SalesTab = ({
             showNotification("Plaka formatı geçersiz. Örn: 34ABC123", "error");
             return;
         }
-        if (selectedServiceIds.length === 0) {
+        if (!useCustomPrice && selectedServiceIds.length === 0) {
             showNotification("En az 1 adet hizmet seçmelisiniz.", "error");
             return;
         }
@@ -211,30 +220,49 @@ export const SalesTab = ({
             customerSnapshot: snapshot,
             serviceIds: selectedServiceIds,
             totalPrice: finalPrice,
-            discountAmount: isRewardRedeemed ? originalPrice : campaignDetails.discountAmount,
-            campaignIds: isRewardRedeemed ? [] : campaignDetails.appliedCampaigns.map(c => c.id),
-            paymentMethod: isRewardRedeemed ? LOYALTY_REWARD_PAYMENT : paymentMethod,
+            discountAmount: useCustomPrice
+                ? Math.max(0, originalPrice - finalPrice)
+                : (isRewardRedeemed ? originalPrice : campaignDetails.discountAmount),
+            campaignIds: useCustomPrice || isRewardRedeemed ? [] : campaignDetails.appliedCampaigns.map(c => c.id),
+            paymentMethod: isRewardRedeemed && !useCustomPrice ? LOYALTY_REWARD_PAYMENT : paymentMethod,
             date: new Date().toISOString(),
             status: 'COMPLETED',
-            notes: notes + (isRewardRedeemed ? ' [SADAKAT ÖDÜL KULLANIMI]' : ''),
-            isLoyaltyReward: isRewardRedeemed
+            notes: notes
+                + (isRewardRedeemed && !useCustomPrice ? ' [SADAKAT ÖDÜL KULLANIMI]' : '')
+                + (useCustomPrice ? ` [ÖZEL TUTAR]` : ''),
+            isLoyaltyReward: isRewardRedeemed && !useCustomPrice,
+            isCustomPrice: !!useCustomPrice
         };
 
         setTransactions(prev => [...prev, newTransaction]);
-        showNotification("Satış işlemi başarıyla tamamlandı!");
+        showNotification(
+            useCustomPrice && finalPrice === 0
+                ? "Ücretsiz işlem kaydedildi."
+                : "Satış işlemi başarıyla tamamlandı!"
+        );
 
         // Fiş hazırla
+        const receiptLines = selectedServices.length > 0
+            ? selectedServices.map(s => ({
+                label: s.name,
+                amount: useCustomPrice ? 0 : (s.prices?.[currentVehicleType] || 0)
+            }))
+            : [{ label: 'Hizmet (özel tutar)', amount: finalPrice }];
+
+        if (useCustomPrice && selectedServices.length > 0) {
+            receiptLines.push({ label: 'Özel Tutar Düzeltmesi', amount: finalPrice - originalPrice });
+        }
+
         setReceipt({
             date: newTransaction.date,
             customer: snapshot,
-            lines: selectedServices.map(s => ({
-                label: s.name,
-                amount: s.prices?.[currentVehicleType] || 0
-            })),
-            subTotal: originalPrice,
-            discount: isRewardRedeemed ? originalPrice : campaignDetails.discountAmount,
+            lines: receiptLines,
+            subTotal: useCustomPrice ? finalPrice : originalPrice,
+            discount: useCustomPrice
+                ? 0
+                : (isRewardRedeemed ? originalPrice : campaignDetails.discountAmount),
             total: finalPrice,
-            paymentMethod: isRewardRedeemed ? LOYALTY_REWARD_PAYMENT : paymentMethod,
+            paymentMethod: isRewardRedeemed && !useCustomPrice ? LOYALTY_REWARD_PAYMENT : paymentMethod,
             note: notes
         });
 
@@ -250,7 +278,9 @@ export const SalesTab = ({
         resetForm();
     };
 
-    const canCheckout = plate && selectedServiceIds.length > 0 && (matchedCustomer || (isNewCustomerMode && custName && custPhone));
+    const canCheckout = plate
+        && (useCustomPrice || selectedServiceIds.length > 0)
+        && (matchedCustomer || (isNewCustomerMode && custName && custPhone));
 
     return (
         <div className="space-y-6 text-left pb-32 lg:pb-0">
@@ -501,6 +531,10 @@ export const SalesTab = ({
                             totalDuration={totalDuration}
                             paymentMethod={paymentMethod}
                             setPaymentMethod={setPaymentMethod}
+                            useCustomPrice={useCustomPrice}
+                            setUseCustomPrice={setUseCustomPrice}
+                            customPrice={customPrice}
+                            setCustomPrice={setCustomPrice}
                             onRemove={(id) => toggleService(id)}
                             onCheckout={handleSaveCheckout}
                             canCheckout={canCheckout}
@@ -523,6 +557,10 @@ export const SalesTab = ({
                             totalDuration={totalDuration}
                             paymentMethod={paymentMethod}
                             setPaymentMethod={setPaymentMethod}
+                            useCustomPrice={useCustomPrice}
+                            setUseCustomPrice={setUseCustomPrice}
+                            customPrice={customPrice}
+                            setCustomPrice={setCustomPrice}
                             onRemove={(id) => toggleService(id)}
                             onCheckout={handleSaveCheckout}
                             canCheckout={canCheckout}
@@ -537,9 +575,9 @@ export const SalesTab = ({
                         className="flex-1 text-left"
                     >
                         <span className="text-[10px] text-gray-400 block">
-                            {selectedServices.length} hizmet • {totalDuration} dk
+                            {selectedServices.length} hizmet • {totalDuration} dk{useCustomPrice ? ' • özel tutar' : ''}
                         </span>
-                        <span className="text-xl font-extrabold text-emerald-400">
+                        <span className={`text-xl font-extrabold ${finalPrice === 0 ? 'text-amber-300' : 'text-emerald-400'}`}>
                             {formatCurrency(finalPrice)}
                         </span>
                     </button>
@@ -577,6 +615,10 @@ const CartPanel = ({
     totalDuration,
     paymentMethod,
     setPaymentMethod,
+    useCustomPrice,
+    setUseCustomPrice,
+    customPrice,
+    setCustomPrice,
     onRemove,
     onCheckout,
     canCheckout,
@@ -634,7 +676,7 @@ const CartPanel = ({
                 <span>Ara Toplam</span>
                 <span className="font-bold text-gray-200">{formatCurrency(originalPrice)}</span>
             </div>
-            {!isRewardRedeemed && campaignDetails.discountAmount > 0 && (
+            {!isRewardRedeemed && !useCustomPrice && campaignDetails.discountAmount > 0 && (
                 <div className="space-y-1">
                     <div className="flex justify-between text-emerald-400">
                         <span>Kampanya İndirimi</span>
@@ -649,7 +691,7 @@ const CartPanel = ({
                     </div>
                 </div>
             )}
-            {isRewardRedeemed && (
+            {isRewardRedeemed && !useCustomPrice && (
                 <div className="flex justify-between text-emerald-400">
                     <span className="flex items-center gap-1"><Icons.Gift /> Sadakat Ödülü</span>
                     <span className="font-bold">- {formatCurrency(originalPrice)}</span>
@@ -657,14 +699,46 @@ const CartPanel = ({
             )}
         </div>
 
+        {/* Özel tutar / manuel fiyat */}
+        <div className="border-t border-darkBg-border mt-3 pt-3">
+            <label className="flex items-center justify-between cursor-pointer select-none">
+                <div className="text-left">
+                    <span className="text-[11px] font-bold text-gray-200 block">Özel Tutar</span>
+                    <span className="text-[10px] text-gray-500">
+                        Tanıdık fiyatı, ücretsiz işlem (0 ₺) veya elle düzeltme.
+                    </span>
+                </div>
+                <input
+                    type="checkbox"
+                    checked={!!useCustomPrice}
+                    onChange={(e) => setUseCustomPrice(e.target.checked)}
+                    className="w-4 h-4 rounded text-brand-600 bg-darkBg-deep focus:ring-brand-500 border-gray-700 shrink-0"
+                />
+            </label>
+            {useCustomPrice && (
+                <div className="mt-2 relative">
+                    <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={customPrice}
+                        onChange={(e) => setCustomPrice(e.target.value)}
+                        placeholder="0"
+                        className="w-full bg-darkBg-deep border border-brand-500/50 focus:border-brand-500 px-3 py-2 pr-8 rounded-lg text-right text-base font-mono-num font-extrabold text-white outline-none transition"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none font-bold">₺</span>
+                </div>
+            )}
+        </div>
+
         <div className="border-t border-darkBg-border mt-3 pt-3 flex items-end justify-between">
             <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Tahsil Edilecek</span>
-            <span className="text-2xl font-extrabold text-emerald-400">
+            <span className={`text-2xl font-extrabold ${finalPrice === 0 ? 'text-amber-300' : 'text-emerald-400'}`}>
                 {formatCurrency(finalPrice)}
             </span>
         </div>
 
-        {!isRewardRedeemed && (
+        {(!isRewardRedeemed || useCustomPrice) && (
             <div className="mt-3">
                 <label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold block mb-2">Ödeme Yöntemi</label>
                 <div className="grid grid-cols-2 gap-1.5">
